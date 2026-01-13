@@ -1,0 +1,229 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// NOTE: SQLite has limited enum support in some contexts, switching to String for stability.
+// IncomeType: "EVENTUAL" | "ONE_TIME"
+// IncomeFrequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY"
+
+model AdditionalIncome {
+  id             Int     @id @default(autoincrement())
+  name           String // Ej: "Freelance", "Venta Garage"
+  amount         Float // Monto del ingreso
+  type           String // "EVENTUAL" o "ONE_TIME"
+  frequency      String? // Solo si es EVENTUAL - "WEEKLY", "BIWEEKLY", "MONTHLY"
+  durationMonths Int? // Solo si es EVENTUAL
+
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id])
+
+  accountId Int?
+  account   Account? @relation(fields: [accountId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Salary {
+  id       Int   @id @default(autoincrement())
+  grossVal Float // Salario Bruto ingresado
+  netVal   Float // Salario Neto calculado
+
+  // Deducciones
+  taxes     Float // Total impuestos
+  socialSec Float // Seguro Social (9.75%)
+  eduIns    Float // Seguro Educativo (1.25%)
+  incomeTax Float // Impuesto Sobre la Renta (si aplica)
+
+  // Ingresos Extra
+  bonus Float // Bonos o Décimo
+
+  // Deducciones por ausencia
+  absentDays Int @default(0) // Días faltados
+
+  createdAt DateTime @default(now())
+
+  // Metadatos
+  company String? // Nombre de la empresa (Opcional)
+
+  // Relación opcional con Perfil
+  profileId Int?
+  profile   Profile? @relation(fields: [profileId], references: [id])
+
+  accountId Int?
+  account   Account? @relation(fields: [accountId], references: [id])
+}
+
+model Profile {
+  id        Int      @id @default(autoincrement())
+  name      String // Ej: "Ricardo", "Casa"
+  createdAt DateTime @default(now())
+
+  expenses    Expense[]
+  goals       Goal[]
+  salaries    Salary[]
+  incomes     AdditionalIncome[]
+  creditCards CreditCard[]
+  loans       Loan[]
+  accounts    Account[]
+  categories  Category[]
+
+  role             String  @default("USER") // "ADMIN" | "USER"
+  customDeductions String? // JSON string for templates (Fase 3)
+}
+
+model Expense {
+  id       Int    @id @default(autoincrement())
+  name     String // Ej: "Alquiler", "Netflix"
+  amount   Float
+  category String // Deprecated: Kept for backward compatibility
+  
+  // New Relation
+  categoryId Int?
+  categoryRel Category? @relation(fields: [categoryId], references: [id])
+
+  // Para el calendario/recurrencia
+  dueDate     Int? // Día del mes de pago (Ej: 15)
+  isRecurring Boolean @default(true)
+  isOneTime   Boolean @default(false)
+
+  // Payment Details
+  paymentMethod String? // CASH | DEBIT | CREDIT
+  linkedCardId  Int?
+  
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id])
+
+  accountId Int?
+  account   Account? @relation(fields: [accountId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id      Int      @id @default(autoincrement())
+  name    String   // Ej: "Comida", "Alquiler"
+  icon    String   // Identificador de icono (lucide-react)
+  color   String   // Clase de color Tailwind (text-blue-500)
+  type    String   // Macro-Tipo: "FIXED" | "VARIABLE" | "LUXURY" | "SAVING"
+  monthlyLimit Float? // Tope mensual opcional
+  
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id])
+  
+  expenses Expense[]
+  
+  createdAt DateTime @default(now())
+}
+
+// GoalType: "FIXED" (Ahorro recurrente) | "VARIABLE" (Aportes libres)
+// GoalFrequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY"
+// GoalPriority: "HIGH" | "MEDIUM" | "LOW"
+
+model Goal {
+  id            Int       @id @default(autoincrement())
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+
+  // Phase 2: Intelligent Goals
+  type               String  @default("VARIABLE") // FIXED | VARIABLE
+  frequency          String? // WEEKLY | BIWEEKLY | MONTHLY
+  contributionAmount Float? // Monto que se ahorra periódicamente (si es FIXED)
+  priority           String? @default("MEDIUM") // HIGH | MEDIUM | LOW
+  
+  // Link to account for auto-debits (FIXED Goals)
+  sourceAccountId    Int?
+  // Relation is manual/optional in code or we can define it:
+  // sourceAccount      Account? @relation(fields: [sourceAccountId], references: [id])
+  // Let's keep it simple ID for now to avoid circular relation complexity in simple dashboard
+
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model CreditCard {
+  id      Int    @id @default(autoincrement())
+  name    String // Ej: "Visa Infinite"
+  limit   Float // Límite de crédito
+  balance Float  @default(0) // Deuda actual
+
+  cutoffDay  Int // Día de corte (1-31)
+  paymentDay Int // Día límite de pago (1-31)
+
+  // Pro Features
+  interestRate         Float? // Tasa de interés anual (%)
+  annualFee            Float? // Anualidad ($)
+  minPaymentPercentage Float? @default(3.0) // % Pago Mínimo (Capital)
+  insuranceRate        Float? @default(0.0) // % Seguro Deuda Mensual
+
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// Phase 6: Debts & Loans
+model Loan {
+  id             Int      @id @default(autoincrement())
+  name           String   // Ej: "Préstamo Personal", "Hipoteca Casa"
+  lender         String   // Banco o Persona (Ej: "Banco General", "Tío Juan")
+  type           String   // "PERSONAL", "AUTO", "MORTGAGE", "OTHER"
+  
+  totalAmount    Float    // Monto original (Capital)
+  currentBalance Float    // Saldo actual
+  
+  interestRate   Float?   // Tasa anual (%)
+  termMonths     Int?     // Plazo en meses
+  monthlyPayment Float?   // Letra mensual
+  paymentDay     Int?     // Día de pago
+  
+  isAutomatic    Boolean  @default(false) // Si es descuento directo (afecta logica de sueldo neto vs disponible)
+
+  profileId      Int
+  profile        Profile  @relation(fields: [profileId], references: [id])
+
+  createdAt      DateTime @default(now())
+}
+
+model Account {
+  id       Int    @id @default(autoincrement())
+  name     String // Ej: "Banco General", "Caja Menuda"
+  type     String // "BANK", "CASH", "SAVINGS", "WALLET"
+  balance  Float  @default(0)
+  currency String @default("USD")
+
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id])
+
+  expenses Expense[]
+  incomes  AdditionalIncome[]
+  salaries Salary[]
+  transfersFrom Transfer[] @relation("SourceAccount")
+  transfersTo   Transfer[] @relation("DestinationAccount")
+
+  createdAt DateTime @default(now())
+}
+
+model Transfer {
+  id             Int      @id @default(autoincrement())
+  amount         Float
+  description    String?
+  date           DateTime @default(now())
+
+  sourceAccountId      Int
+  sourceAccount        Account @relation("SourceAccount", fields: [sourceAccountId], references: [id])
+
+  destinationAccountId Int
+  destinationAccount   Account @relation("DestinationAccount", fields: [destinationAccountId], references: [id])
+}

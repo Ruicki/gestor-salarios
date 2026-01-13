@@ -1,0 +1,318 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Account, CreditCard, Category } from '@prisma/client';
+import { createExpense } from '@/app/actions/budget';
+import { getCategories } from '@/app/actions/categories';
+import { toast } from 'sonner';
+import * as LucideIcons from 'lucide-react';
+import {
+    CreditCard as CreditCardIcon,
+    Wallet,
+    Calendar,
+    Save,
+    X,
+    HelpCircle
+} from 'lucide-react';
+
+interface ExpenseWizardProps {
+    accounts: Account[];
+    creditCards: CreditCard[];
+    categories: Category[];
+    profileId: number;
+    onClose: () => void;
+    onSuccess: () => void;
+    onInit?: () => void;
+}
+
+export default function ExpenseWizard({ accounts, creditCards, categories, profileId, onClose, onSuccess, onInit }: ExpenseWizardProps) {
+    const [step, setStep] = useState(1);
+
+    // Form State
+    const [categoryId, setCategoryId] = useState<number | null>(null);
+    const [amount, setAmount] = useState('');
+    const [name, setName] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CREDIT'>('CASH');
+    const [accountId, setAccountId] = useState<string>('');
+    const [cardId, setCardId] = useState<string>('');
+    const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+    const [isRecurring, setIsRecurring] = useState(false);
+
+    // Initial Fetch (If categories valid but empty list locally)
+    useEffect(() => {
+        if (categories.length === 0) {
+            // In a real app we might fetch here, but BudgetDashboard handles it.
+            // Just a safety check or we can call initialization logic.
+            getCategories(profileId).then((cats) => {
+                // Si recuperamos categorías (se hizo seeding), notificamos al padre para que recargue el perfil
+                if (cats.length > 0 && onInit) {
+                    onInit();
+                }
+            });
+        }
+    }, [categories.length, profileId, onInit]);
+
+    // Lock Body Scroll
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
+
+    // Handlers
+    const handleCategorySelect = (catId: number) => {
+        setCategoryId(catId);
+        setStep(2);
+    };
+
+    const handleSave = async () => {
+        const val = parseFloat(amount);
+        if (!name || isNaN(val) || val <= 0 || !categoryId) {
+            toast.error("Por favor completa los campos obligatorios");
+            return;
+        }
+
+        // Validaciones Financieras
+        if (paymentMethod === 'CASH') {
+            if (!accountId) {
+                toast.error("Selecciona una cuenta de origen");
+                return;
+            }
+            const acc = accounts.find(a => a.id === Number(accountId));
+            if (acc && acc.balance < val) {
+                toast.error(`⚠️ Saldo insuficiente en ${acc.name} ($${acc.balance})`);
+                return;
+            }
+        }
+
+        if (paymentMethod === 'CREDIT') {
+            if (!cardId) {
+                toast.error("Selecciona la tarjeta utilizada");
+                return;
+            }
+            const card = creditCards.find(c => c.id === Number(cardId));
+            if (card && (card.balance + val) > card.limit) {
+                toast.error(`⚠️ Límite excedido en ${card.name}`);
+                return;
+            }
+        }
+
+        // Find category name for backward compatibility
+        const selectedCat = categories.find(c => c.id === categoryId);
+
+        try {
+            await createExpense({
+                name,
+                amount: val,
+                category: selectedCat?.name || "Gasto", // Legacy field
+                // NEW FIELD
+                categoryId: categoryId,
+                profileId,
+                dueDate: isRecurring ? new Date(date).getDate() : undefined,
+                isRecurring,
+                isOneTime: !isRecurring,
+                paymentMethod,
+                accountId: paymentMethod === 'CASH' ? Number(accountId) : undefined,
+                linkedCardId: paymentMethod === 'CREDIT' ? Number(cardId) : undefined
+            });
+
+            toast.success("Gasto registrado con éxito");
+            onSuccess();
+        } catch (error) {
+            console.error(error);
+            toast.error("Hubo un error al guardar el gasto");
+        }
+    };
+
+    // Helper to get Icon Component
+    const getIcon = (iconName: string) => {
+        // @ts-ignore
+        const Icon = LucideIcons[iconName];
+        return Icon ? <Icon className="w-6 h-6" /> : <HelpCircle className="w-6 h-6" />;
+    };
+
+    // Render Steps
+    const renderStep1_Categories = () => (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-black text-center mb-2 text-zinc-900 dark:text-white">¿Qué estás pagando?</h2>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto p-1">
+                {categories.map(cat => (
+                    <button
+                        key={cat.id}
+                        onClick={() => handleCategorySelect(cat.id)}
+                        className={`p-4 rounded-3xl border-2 border-zinc-100 dark:border-zinc-800 hover:border-purple-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all group flex flex-col items-center gap-3`}
+                    >
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-zinc-100 dark:bg-zinc-800 ${cat.color} bg-opacity-10`}>
+                            {getIcon(cat.icon)}
+                        </div>
+                        <span className="font-bold text-sm text-zinc-700 dark:text-zinc-300">{cat.name}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Fallback if no categories */}
+            {categories.length === 0 && (
+                <div className="text-center text-zinc-500 py-10">
+                    <p>Cargando categorías...</p>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderStep2_Details = () => (
+        <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">
+            <div className="flex items-center justify-between">
+                <button
+                    onClick={() => setStep(1)}
+                    className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-bold text-sm px-2 py-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                >
+                    ← Volver
+                </button>
+                <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full mr-12">
+                    {(() => {
+                        const cat = categories.find(c => c.id === categoryId);
+                        if (!cat) return null;
+                        return (
+                            <>
+                                <span className={cat.color}>{getIcon(cat.icon)}</span>
+                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{cat.name}</span>
+                            </>
+                        );
+                    })()}
+                </div>
+            </div>
+
+            {/* Main Input */}
+            <div className="text-center space-y-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">Monto del Gasto</label>
+                <div className="relative inline-block w-full max-w-[280px]">
+                    <input
+                        type="number"
+                        value={amount}
+                        onChange={e => setAmount(e.target.value)}
+                        autoFocus
+                        className="w-full bg-transparent text-center text-5xl md:text-7xl font-black tracking-tighter outline-none placeholder-zinc-200 dark:placeholder-zinc-800 focus:placeholder-zinc-100 transition-all border-b-2 border-transparent focus:border-zinc-200 dark:focus:border-zinc-800 pb-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-zinc-900 dark:text-white"
+                        placeholder="0"
+                    />
+                    <span className="absolute -left-4 md:-left-6 top-1/2 -translate-y-1/2 text-2xl md:text-3xl font-bold text-zinc-300 select-none">$</span>
+                </div>
+            </div>
+
+            {/* Inputs Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2 pl-1">Descripción</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 ring-purple-500/50 transition-all"
+                            placeholder="¿En qué gastaste?"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Payment Method Toggle */}
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2 pl-1">Método de Pago</label>
+                        <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl">
+                            <button
+                                onClick={() => setPaymentMethod('CASH')}
+                                className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all ${paymentMethod === 'CASH' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            >
+                                <Wallet className="w-4 h-4" />
+                                Efectivo/Débito
+                            </button>
+                            <button
+                                onClick={() => setPaymentMethod('CREDIT')}
+                                className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all ${paymentMethod === 'CREDIT' ? 'bg-white dark:bg-zinc-800 shadow-sm text-purple-600 dark:text-purple-400' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            >
+                                <CreditCardIcon className="w-4 h-4" />
+                                Crédito
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Dynamic Account/Card Select */}
+                    <div>
+                        {paymentMethod === 'CASH' ? (
+                            <div className="animate-in fade-in slide-in-from-right-4">
+                                <label className="block text-xs font-bold text-zinc-500 uppercase mb-2 pl-1">Cuenta de Origen</label>
+                                <select
+                                    value={accountId}
+                                    onChange={e => setAccountId(e.target.value)}
+                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 ring-emerald-500/50 appearance-none text-zinc-800 dark:text-zinc-200 transition-all"
+                                >
+                                    <option value="" disabled>Seleccionar Cuenta...</option>
+                                    {accounts.map(acc => (
+                                        <option key={acc.id} value={acc.id}>{acc.name} (${acc.balance.toFixed(2)})</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <div className="animate-in fade-in slide-in-from-right-4">
+                                <label className="block text-xs font-bold text-zinc-500 uppercase mb-2 pl-1">Tarjeta de Crédito</label>
+                                <select
+                                    value={cardId}
+                                    onChange={e => setCardId(e.target.value)}
+                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 ring-purple-500/50 appearance-none text-zinc-800 dark:text-zinc-200 transition-all"
+                                >
+                                    <option value="" disabled>Seleccionar Tarjeta...</option>
+                                    {creditCards.map(card => (
+                                        <option key={card.id} value={card.id}>{card.name} (Disp: ${(card.limit - card.balance).toFixed(2)})</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="pt-4 flex flex-col-reverse md:flex-row items-center justify-between gap-4 border-t border-zinc-100 dark:border-zinc-800 mt-4">
+                <div className="flex items-center justify-between w-full md:w-auto gap-3">
+                    <input
+                        type="date"
+                        value={date}
+                        onChange={e => setDate(e.target.value)}
+                        className="bg-zinc-50 dark:bg-zinc-900 border-none rounded-xl px-3 py-2 font-bold text-sm text-zinc-600 dark:text-zinc-300 outline-none flex-1 md:flex-none"
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer group whitespace-nowrap">
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isRecurring ? 'bg-purple-500 border-purple-500' : 'border-zinc-300 dark:border-zinc-700'}`}>
+                            {isRecurring && <CreditCardIcon className="w-3 h-3 text-white" />}
+                        </div>
+                        <input type="checkbox" className="hidden" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} />
+                        <span className="text-xs font-bold text-zinc-500 group-hover:text-zinc-800 dark:group-hover:text-zinc-300 transition-colors">Recurrente</span>
+                    </label>
+                </div>
+
+                <button
+                    onClick={handleSave}
+                    className="w-full md:w-auto md:flex-1 md:max-w-[200px] bg-zinc-900 dark:bg-white text-white dark:text-black py-4 rounded-2xl font-black text-lg hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2"
+                >
+                    <Save className="w-5 h-5" />
+                    Guardar
+                </button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-zinc-950 w-full md:max-w-2xl rounded-t-[2.5rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-2xl relative overflow-hidden animate-in slide-in-from-bottom-10 duration-300 max-h-[95vh] min-h-[85vh] md:min-h-0 overflow-y-auto">
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 md:top-6 md:right-6 p-2 bg-zinc-100 dark:bg-zinc-900 rounded-full text-zinc-400 hover:text-red-500 transition-colors z-10"
+                >
+                    <X className="w-6 h-6" />
+                </button>
+
+                {step === 1 && renderStep1_Categories()}
+                {step === 2 && renderStep2_Details()}
+            </div>
+        </div>
+    );
+}
