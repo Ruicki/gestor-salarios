@@ -98,49 +98,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
         }
     }
 
-    async function handleDelete(id: number) {
-        confirmDelete(async () => {
-            try {
-                await deleteGoal(id);
-                onUpdate();
-                toast.success("Meta eliminada");
-            } catch (error) {
-                toast.error("Error eliminando meta");
-            }
-        });
-    }
 
-    // --- TRANSACTION HANDLERS ---
-    async function handleTransaction(id: number, currentAmount: number, type: 'DEPOSIT' | 'WITHDRAW') {
-        const amount = parseFloat(transactionAmount);
-        if (!amount || amount <= 0) return;
-
-        if (type === 'WITHDRAW' && amount > currentAmount) {
-            toast.error("No puedes retirar más de lo ahorrado");
-            return;
-        }
-
-        // For DEPOSIT: Check if account linked to goal SHOULD be used as default
-        const goal = goals.find(g => g.id === id);
-        let finalAccountId = selectedAccountId ? parseInt(selectedAccountId) : undefined;
-
-        // Enforce account selection for DEPOSIT if not fixed or even if fixed (backend validates)
-        if (type === 'DEPOSIT' && !finalAccountId && !goal?.sourceAccountId) {
-            toast.error("Selecciona una cuenta de origen");
-            return;
-        }
-
-        try {
-            await handleGoalTransaction(id, amount, type, finalAccountId);
-            onUpdate();
-            setTransactionAmount('');
-            setSelectedAccountId('');
-            setExpandedGoalId(null);
-            toast.success(type === 'DEPOSIT' ? "¡Aporte guardado! 🐷" : "Retiro exitoso");
-        } catch (error: any) {
-            toast.error(error.message || "Error en transacción");
-        }
-    }
 
     // --- SMART CALCULATOR (Helper) ---
     const calculateRecommendedSaving = () => {
