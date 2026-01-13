@@ -88,7 +88,8 @@ export default function BudgetPage() {
                 name: goalForm.name,
                 targetAmount: parseFloat(goalForm.targetAmount),
                 profileId: selectedProfileId,
-                deadline: goalForm.deadline ? new Date(goalForm.deadline) : undefined
+                deadline: goalForm.deadline ? new Date(goalForm.deadline) : undefined,
+                type: 'VARIABLE' // Default type for basic goals
             });
             await loadProfiles();
             setGoalForm({ name: '', targetAmount: '', deadline: '' });

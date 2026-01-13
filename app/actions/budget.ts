@@ -46,6 +46,7 @@ export async function deleteProfile(id: number): Promise<void> {
         prisma.creditCard.deleteMany({ where: { profileId: id } }),
         prisma.loan.deleteMany({ where: { profileId: id } }), // New Loan deletion
         prisma.account.deleteMany({ where: { profileId: id } }), // Added Account deletion
+        prisma.category.deleteMany({ where: { profileId: id } }), // Fix: Delete categories before profile
         prisma.profile.delete({ where: { id } })
     ]);
     revalidatePath('/budget');

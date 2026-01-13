@@ -117,50 +117,75 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
             )}
 
             {/* List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {accounts.map(acc => (
-                    <div
-                        key={acc.id}
-                        onClick={() => setSelectedAccount(acc)}
-                        className="relative group bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6 md:p-8 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer"
-                    >
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-3 bg-zinc-100 dark:bg-zinc-800/50 rounded-2xl">
-                                {getIcon(acc.type)}
-                            </div>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handleDelete(acc.id); }}
-                                className="text-zinc-400 hover:text-red-500 bg-transparent hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
-                                title="Eliminar"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {accounts.map(acc => {
+                    const isPositive = acc.balance >= 0;
+                    return (
+                        <div
+                            key={acc.id}
+                            onClick={() => setSelectedAccount(acc)}
+                            className={`
+                                relative group overflow-hidden rounded-[2.5rem] p-8 shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer hover:-translate-y-2
+                                ${acc.type === 'BANK' ? 'bg-linear-to-br from-zinc-900 to-zinc-800 text-white' : ''}
+                                ${acc.type === 'CASH' ? 'bg-linear-to-br from-emerald-500 to-teal-700 text-white' : ''}
+                                ${acc.type === 'WALLET' ? 'bg-linear-to-br from-purple-600 to-indigo-800 text-white' : ''}
+                                ${acc.type === 'SAVINGS' ? 'bg-linear-to-br from-pink-500 to-rose-700 text-white' : ''}
+                                ${!['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800' : ''}
+                            `}
+                        >
+                            {/* Background Decorations */}
+                            <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+                            <div className="absolute bottom-0 left-0 -ml-12 -mb-12 w-48 h-48 bg-black/10 rounded-full blur-3xl pointer-events-none" />
 
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                    {getTypeName(acc.type)}
-                                </span>
-                            </div>
-                            <h3 className="text-xl font-bold text-zinc-800 dark:text-zinc-200 truncate" title={acc.name}>{acc.name}</h3>
-                            <div className="mt-4">
-                                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">Disponible</p>
-                                <p className={`text-3xl font-black ${acc.balance >= 0 ? 'text-zinc-900 dark:text-white' : 'text-red-500'}`}>
-                                    ${acc.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                </p>
+                            <div className="relative z-10 flex flex-col justify-between h-full min-h-[160px]">
+                                {/* Header */}
+                                <div className="flex justify-between items-start">
+                                    <div className={`p-3 rounded-2xl backdrop-blur-md ${['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'bg-white/20 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white'}`}>
+                                        {getIcon(acc.type)}
+                                    </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(acc.id); }}
+                                        className={`p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'hover:bg-white/20 text-white' : 'text-zinc-400 hover:text-red-500 hover:bg-red-50'}`}
+                                        title="Eliminar"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                {/* Content */}
+                                <div className="mt-8">
+                                    <div className="flex items-center gap-2 mb-2 opacity-80">
+                                        <span className="text-xs font-bold uppercase tracking-widest">
+                                            {getTypeName(acc.type)}
+                                        </span>
+                                    </div>
+                                    <h3 className={`text-xl font-bold truncate mb-1 ${['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'text-white' : 'text-zinc-900 dark:text-white'}`}>
+                                        {acc.name}
+                                    </h3>
+                                    <p className={`text-3xl md:text-3xl lg:text-3xl font-black tracking-tight ${['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'text-white' : 'text-zinc-900 dark:text-white'}`}>
+                                        ${acc.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
 
                 {accounts.length === 0 && !isCreating && (
-                    <div className="col-span-full py-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl">
-                        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Landmark className="w-8 h-8 text-zinc-400" />
+                    <div className="col-span-full py-24 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-[3rem] bg-zinc-50/50 dark:bg-zinc-900/50">
+                        <div className="w-20 h-20 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                            <Landmark className="w-10 h-10 text-zinc-300" />
                         </div>
-                        <p className="text-zinc-400 font-medium text-lg">No has añadido ninguna cuenta aún.</p>
-                        <p className="text-zinc-500 text-sm">Registra tus cuentas bancarias o efectivo para controlar tu liquidez.</p>
+                        <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Sin cuentas activas</h3>
+                        <p className="text-zinc-500 max-w-sm mx-auto">
+                            Comienza agregando tu primera cuenta bancaria o efectivo para llevar el control.
+                        </p>
+                        <button
+                            onClick={() => setIsCreating(true)}
+                            className="mt-6 px-8 py-3 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-xl font-bold hover:scale-105 transition-transform"
+                        >
+                            Crear Cuenta
+                        </button>
                     </div>
                 )}
             </div>
