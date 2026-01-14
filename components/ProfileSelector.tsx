@@ -21,7 +21,7 @@ export default function ProfileSelector({ profiles, onSelect, onManage }: Profil
                     <div key={profile.id} className="group flex flex-col items-center gap-4 cursor-pointer" onClick={() => onSelect(profile.id)}>
                         <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-zinc-800 border-2 border-transparent group-hover:border-white group-hover:scale-105 transition-all duration-300 flex items-center justify-center relative overflow-hidden shadow-2xl">
                             {/* Gradient Background based on ID to act as "Avatar" */}
-                            <div className={`absolute inset-0 opacity-50 bg-gradient-to-br ${getGradient(profile.id)}`}></div>
+                            <div className={`absolute inset-0 opacity-50 bg-linear-to-br ${getGradient(profile.id)}`}></div>
                             <span className="text-5xl font-bold text-white relative z-10 select-none">
                                 {profile.name.charAt(0).toUpperCase()}
                             </span>

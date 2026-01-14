@@ -30,10 +30,11 @@ export function DeleteConfirmation({ onConfirm, onCancel, title = "¿Eliminar re
     );
 }
 
-export function confirmDelete(onConfirm: () => Promise<void> | void, title?: string) {
+export function confirmDelete(onConfirm: () => Promise<void> | void, title?: string, message?: string) {
     toast.custom((t) => (
         <DeleteConfirmation
             title={title}
+            message={message}
             onCancel={() => toast.dismiss(t)}
             onConfirm={async () => {
                 toast.dismiss(t);

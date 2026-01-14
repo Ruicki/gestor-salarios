@@ -34,15 +34,15 @@ export default function WelcomeScreen({ onProfileCreated }: WelcomeScreenProps) 
     };
 
     return (
-        <div className="fixed inset-0 bg-white/50 dark:bg-zinc-950/90 backdrop-blur-xl z-[100] flex items-center justify-center p-6 animate-in fade-in duration-700">
+        <div className="fixed inset-0 bg-white/50 dark:bg-zinc-950/90 backdrop-blur-xl z-100 flex items-center justify-center p-6 animate-in fade-in duration-700">
             <div className="max-w-md w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-[2.5rem] p-10 text-center relative overflow-hidden">
 
                 {/* Decoration */}
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
                 <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
                 <div className="mb-8 flex justify-center">
-                    <div className="w-24 h-24 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-500/30 rotate-3 transform transition-transform hover:rotate-6">
+                    <div className="w-24 h-24 bg-linear-to-tr from-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-500/30 rotate-3 transform transition-transform hover:rotate-6">
                         <Sparkles className="w-12 h-12 text-white" />
                     </div>
                 </div>

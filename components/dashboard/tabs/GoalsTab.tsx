@@ -312,7 +312,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
     const [isReclaiming, setIsReclaiming] = useState(false);
 
     async function handleDelete(id: number) {
-        if (await confirmDelete("¿Borrar meta?", "Esta acción no se puede deshacer")) {
+        confirmDelete(async () => {
             try {
                 await deleteGoal(id);
                 toast.success("Meta eliminada");
@@ -320,7 +320,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
             } catch (error) {
                 toast.error("Error al eliminar");
             }
-        }
+        }, "¿Borrar meta?", "Esta acción no se puede deshacer");
     }
 
     async function handleTransaction(goalId: number, currentAmount: number, type: 'DEPOSIT' | 'WITHDRAW') {
