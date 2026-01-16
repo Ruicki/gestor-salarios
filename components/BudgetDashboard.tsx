@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createProfile, getProfiles } from '@/app/actions/budget';
+import { getProfiles } from '@/app/actions/budget';
 import CreditCardsTab from '@/components/dashboard/tabs/CreditCardsTab';
 import ExpensesTab from '@/components/dashboard/tabs/ExpensesTab';
 import GoalsTab from '@/components/dashboard/tabs/GoalsTab';
@@ -11,90 +11,57 @@ import AccountsTab from '@/components/dashboard/tabs/AccountsTab';
 import DebtsTab from '@/components/dashboard/tabs/DebtsTab';
 import { Profile, Expense, Goal, AdditionalIncome, Salary, CreditCard, Account, Category, Loan } from '@prisma/client';
 import { toast } from 'sonner';
-import { Plus, Trash2, TrendingUp, Wallet, Target, CreditCard as CardIcon, DollarSign, Calendar, Search, Sun, Moon, Briefcase, Eye, EyeOff, UserPlus, Landmark } from "lucide-react";
+import { User, Plus, Wallet, Target, CreditCard as CardIcon, DollarSign, Calendar, Search, Sun, Moon, Briefcase, Eye, EyeOff, UserPlus, Landmark, LogOut, TrendingUp, Settings } from "lucide-react";
 import { ThemeToggle } from './ThemeToggle';
 import ProfileManager from './ProfileManager';
-import WelcomeScreen from './WelcomeScreen';
-import ProfileSelector from './ProfileSelector';
+import { logout } from '@/app/actions/auth';
+import { ProfileWithData } from '@/types';
+import UserSettings from '@/components/UserSettings';
 
-type ProfileWithData = Profile & {
-    role: string; // Explicitly adding role to avoid type errors during regeneration
-    expenses: Expense[];
-    goals: Goal[];
-    incomes: AdditionalIncome[];
-    salaries: Salary[];
-    creditCards: CreditCard[];
-    loans: Loan[];
-    accounts: Account[];
-    categories: Category[];
-};
+interface BudgetDashboardProps {
+    initialProfile: ProfileWithData;
+}
 
-export default function BudgetDashboard() {
-    const [profiles, setProfiles] = useState<ProfileWithData[]>([]);
-    const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
-    const [loading, setLoading] = useState(true);
+export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps) {
+    const [activeProfile, setActiveProfile] = useState<ProfileWithData>(initialProfile);
+    // Removed profiles list state as we focus on single user view (Admin can fetch list in Manager)
+    const [profiles, setProfiles] = useState<ProfileWithData[]>([initialProfile]);
+
+    // UI States
     const [activeTab, setActiveTab] = useState<'incomes' | 'expenses' | 'goals' | 'debts' | 'insights' | 'accounts'>('incomes');
     const [isPrivateMode, setIsPrivateMode] = useState(false);
-    const [showProfileManager, setShowProfileManager] = useState(false);
+    const [isImpersonating, setIsImpersonating] = useState(false);
 
-    useEffect(() => {
-        loadProfiles();
-    }, []);
-
-    async function loadProfiles() {
-        try {
-            // @ts-ignore
-            const data = await getProfiles();
-            setProfiles(data as any);
-        } catch (error) {
-            console.error(error);
-            toast.error("Error cargando perfiles");
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    // --- HANDLERS ---
-    const handleProfileSelect = (profileId: number) => {
-        setSelectedProfileId(profileId);
-        const profile = profiles.find(p => p.id === profileId);
-
-        // SMART REDIRECT: Si no tiene cuentas, mandar directo a setup de cuentas
-        if (profile && profile.accounts.length === 0) {
-            setActiveTab('accounts');
-            toast.info("👋 ¡Hola! Primero configuremos tus cuentas para empezar.");
-        }
+    const handleImpersonate = (profile: ProfileWithData) => {
+        setIsImpersonating(true);
+        setActiveProfile(profile);
+        setShowProfileManager(false);
+        toast.info(`Viendo el perfil de ${profile.name}`, { duration: 4000 });
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div></div>;
+    const exitImpersonation = () => {
+        setIsImpersonating(false);
+        setActiveProfile(initialProfile);
+        window.location.reload();
+    };
+    const [showProfileManager, setShowProfileManager] = useState(false);
+    const [showUserSettings, setShowUserSettings] = useState(false);
 
-    // 1. WELCOME SCREEN (No profiles exist)
-    if (profiles.length === 0) {
-        return <WelcomeScreen onProfileCreated={loadProfiles} />;
+    // Refresh data handler
+    async function refreshData() {
+        // En un caso real haríamos un server action para refetchear SOLO el perfil actual
+        // Por simplicidad, recargamos la página o usamos router.refresh()
+        // O re-implementamos getProfile(id)
+        window.location.reload();
     }
 
-    // 2. PROFILE SELECTOR (Profiles exist, but none selected)
-    if (!selectedProfileId) {
-        return (
-            <>
-                <ProfileSelector
-                    profiles={profiles}
-                    onSelect={handleProfileSelect}
-                    onManage={() => setShowProfileManager(true)}
-                />
-                {showProfileManager && (
-                    <ProfileManager
-                        profiles={profiles}
-                        currentProfileId={null} // No active profile yet
-                        onUpdate={loadProfiles}
-                        onClose={() => setShowProfileManager(false)}
-                    />
-                )}
-            </>
-        );
+    const activeProfileData = activeProfile; // Alias for cleaner diffs below if needed, but we used activeProfile elsewhere
+
+    // --- HANDLERS ---
+    const handleLogout = async () => {
+        await logout();
     }
 
-    const activeProfile = profiles.find(p => p.id === selectedProfileId);
 
     // --- CALCULATIONS ---
     // --- CALCULATIONS ---
@@ -172,6 +139,22 @@ export default function BudgetDashboard() {
                 }
             `}</style>
 
+            {/* IMPERSONATION BANNER */}
+            {isImpersonating && (
+                <div className="fixed top-0 left-0 right-0 bg-indigo-600 text-white z-[100] px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-top">
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                        <Eye className="w-5 h-5" />
+                        <span>Estás viendo el perfil de: {activeProfile.name}</span>
+                    </div>
+                    <button
+                        onClick={exitImpersonation}
+                        className="bg-white/20 hover:bg-white/30 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors border border-white/30"
+                    >
+                        Salir del Modo "Ver Como"
+                    </button>
+                </div>
+            )}
+
             {/* HEADER */}
             <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-zinc-200 dark:border-zinc-800 pb-10">
                 <div className="text-center md:text-left">
@@ -196,19 +179,28 @@ export default function BudgetDashboard() {
                     <ThemeToggle />
 
                     <button
-                        onClick={() => setSelectedProfileId(null)}
+                        onClick={() => setShowUserSettings(true)}
                         className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-2"
-                        title="Cambiar Usuario"
+                        title="Ajustes de Usuario"
                     >
-                        <UserPlus className="w-5 h-5" />
-                        <span className="hidden md:inline">Cambiar</span>
+                        <Settings className="w-5 h-5" />
+                        <span className="hidden md:inline">Ajustes</span>
+                    </button>
+
+                    <button
+                        onClick={handleLogout}
+                        className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-2"
+                        title="Cerrar Sesión"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span className="hidden md:inline">Salir</span>
                     </button>
 
                     {activeProfile?.role === 'ADMIN' && (
                         <button
                             onClick={() => setShowProfileManager(true)}
                             className="bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
-                            title="Gestionar Perfiles"
+                            title="Gestionar Usuarios"
                         >
                             <Briefcase className="w-5 h-5" />
                             <span className="hidden md:inline">Gestionar</span>
@@ -222,9 +214,21 @@ export default function BudgetDashboard() {
                 showProfileManager && (
                     <ProfileManager
                         profiles={profiles}
-                        currentProfileId={selectedProfileId}
-                        onUpdate={loadProfiles}
+                        currentProfileId={activeProfile.id}
+                        onUpdate={refreshData}
                         onClose={() => setShowProfileManager(false)}
+                        onImpersonate={handleImpersonate}
+                    />
+                )
+            }
+
+            {/* USER SETTINGS MODAL */}
+            {
+                showUserSettings && (
+                    <UserSettings
+                        profile={activeProfile}
+                        onClose={() => setShowUserSettings(false)}
+                        onUpdate={refreshData}
                     />
                 )
             }
@@ -303,60 +307,60 @@ export default function BudgetDashboard() {
                         {/* CONTENIDO DE TABS */}
                         <div className="min-h-[500px]">
                             {/* --- TAB: CUENTAS --- */}
-                            {activeTab === 'accounts' && activeProfile && (
+                            {activeTab === 'accounts' && (
                                 <AccountsTab
                                     accounts={activeProfile.accounts || []}
                                     profileId={activeProfile.id}
-                                    onUpdate={loadProfiles}
+                                    onUpdate={refreshData}
                                 />
                             )}
 
                             {/* --- TAB: INGRESOS --- */}
-                            {activeTab === 'incomes' && activeProfile && (
+                            {activeTab === 'incomes' && (
                                 <IncomesTab
                                     incomes={activeProfile.incomes || []}
                                     salaries={activeProfile.salaries || []}
                                     accounts={activeProfile.accounts || []}
                                     profileId={activeProfile.id}
-                                    onUpdate={loadProfiles}
+                                    onUpdate={refreshData}
                                 />
                             )}
 
                             {/* --- TAB: GASTOS --- */}
-                            {activeTab === 'expenses' && activeProfile && (
+                            {activeTab === 'expenses' && (
                                 <ExpensesTab
                                     expenses={activeProfile.expenses || []}
                                     creditCards={activeProfile.creditCards || []}
                                     accounts={activeProfile.accounts || []}
                                     categories={activeProfile.categories || []}
                                     profileId={activeProfile.id}
-                                    onUpdate={loadProfiles}
+                                    onUpdate={refreshData}
                                 />
                             )}
 
                             {/* --- TAB: METAS --- */}
-                            {activeTab === 'goals' && activeProfile && (
+                            {activeTab === 'goals' && (
                                 <GoalsTab
                                     goals={activeProfile.goals || []}
                                     accounts={activeProfile.accounts || []} // Pass accounts
                                     profileId={activeProfile.id}
-                                    onUpdate={loadProfiles}
+                                    onUpdate={refreshData}
                                 />
                             )}
 
                             {/* --- TAB: DEUDAS/TARJETAS --- */}
-                            {activeTab === 'debts' && activeProfile && (
+                            {activeTab === 'debts' && (
                                 <DebtsTab
                                     creditCards={activeProfile.creditCards || []}
                                     loans={activeProfile.loans || []}
                                     accounts={activeProfile.accounts || []} // Pass accounts for payment source
                                     profileId={activeProfile.id}
-                                    onUpdate={loadProfiles}
+                                    onUpdate={refreshData}
                                 />
                             )}
 
                             {/* --- TAB: INSIGHTS --- */}
-                            {activeTab === 'insights' && activeProfile && (
+                            {activeTab === 'insights' && (
                                 <InsightsTab
                                     expenses={activeProfile.expenses || []}
                                     categories={activeProfile.categories || []}
@@ -366,14 +370,7 @@ export default function BudgetDashboard() {
                             )}
                         </div>
 
-                        {showProfileManager && (
-                            <ProfileManager
-                                profiles={profiles}
-                                currentProfileId={selectedProfileId}
-                                onUpdate={loadProfiles}
-                                onClose={() => setShowProfileManager(false)}
-                            />
-                        )}
+                        {/* Duplicate ProfileManager removed */}
                     </>
                 ) : (
                     // Fallback (should not be reached due to ProfileSelector logic above, but kept clean)

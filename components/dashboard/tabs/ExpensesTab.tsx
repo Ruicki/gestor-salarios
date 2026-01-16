@@ -51,16 +51,24 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* --- HEADER COMPONENT --- */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <div className="flex items-center gap-4">
                 <div>
                     <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Mis Gastos</h2>
                     <p className="text-zinc-500 dark:text-zinc-400 font-medium">Gestiona y optimiza tus salidas de dinero.</p>
                 </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+                <button
+                    onClick={() => setShowCategoryManager(true)}
+                    className="h-12 px-6 rounded-2xl font-bold bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all shadow-sm hover:shadow-md"
+                >
+                    Categorías
+                </button>
 
                 <button
                     onClick={() => setShowWizard(true)}
-                    className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 dark:bg-zinc-100 px-6 font-medium text-white dark:text-black transition-all hover:bg-zinc-800 dark:hover:bg-zinc-200 hover:scale-105 shadow-lg hover:shadow-xl w-full md:w-auto"
+                    className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 dark:bg-zinc-100 px-6 font-medium text-white dark:text-black transition-all hover:bg-zinc-800 dark:hover:bg-zinc-200 hover:scale-105 shadow-lg hover:shadow-xl flex-1 md:flex-none"
                 >
                     <span className="flex items-center gap-2">
                         <span className="text-xl leading-none">+</span> Nuevo Gasto

@@ -65,6 +65,9 @@ model Salary {
 model Profile {
   id        Int      @id @default(autoincrement())
   name      String // Ej: "Ricardo", "Casa"
+  email     String?  @unique // [NEW] Email for login
+  password  String?          // [NEW] Hashed password
+  accessCode String? @unique // [NEW] Code to claim this profile
   createdAt DateTime @default(now())
 
   expenses    Expense[]
@@ -203,6 +206,7 @@ model Account {
   type     String // "BANK", "CASH", "SAVINGS", "WALLET"
   balance  Float  @default(0)
   currency String @default("USD")
+  isDefault Boolean @default(false) // [NEW] Para identificar cuenta Efectivo única
 
   profileId Int
   profile   Profile @relation(fields: [profileId], references: [id])

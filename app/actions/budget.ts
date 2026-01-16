@@ -15,7 +15,16 @@ export async function createProfile(name: string): Promise<Profile> {
     const profile = await prisma.profile.create({
         data: {
             name,
-            role
+            role,
+            accounts: {
+                create: {
+                    name: "Efectivo",
+                    type: "CASH",
+                    balance: 0,
+                    currency: "USD",
+                    isDefault: true
+                }
+            }
         }
     });
     revalidatePath('/budget');
@@ -80,38 +89,10 @@ export async function adjustAccountBalance(accountId: number, newBalance: number
     // If diff > 0 (Surplus) -> Income
     // If diff < 0 (Deficit) -> Expense
 
-    await prisma.$transaction(async (tx) => {
-        // Update Account
-        await tx.account.update({
-            where: { id: accountId },
-            data: { balance: newBalance }
-        });
-
-        if (difference > 0) {
-            // Create "Income" for adjustment
-            await tx.additionalIncome.create({
-                data: {
-                    name: `Ajuste de Saldo: ${reason}`,
-                    amount: difference,
-                    type: 'ONE_TIME',
-                    profileId: account.profileId,
-                    accountId: accountId,
-                }
-            });
-        } else {
-            // Create "Expense" for adjustment
-            await tx.expense.create({
-                data: {
-                    name: `Ajuste de Saldo: ${reason}`,
-                    amount: Math.abs(difference),
-                    category: 'Ajuste',
-                    profileId: account.profileId,
-                    isRecurring: false,
-                    isOneTime: true,
-                    accountId: accountId
-                }
-            });
-        }
+    // Modificación: Solo actualizar el balance sin generar registros de Gasto/Ingreso
+    await prisma.account.update({
+        where: { id: accountId },
+        data: { balance: newBalance }
     });
 
     revalidatePath('/budget');

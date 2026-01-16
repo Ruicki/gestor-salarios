@@ -119,18 +119,33 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
     const totalDebt = loans.reduce((acc, l) => acc + l.currentBalance, 0) + creditCards.reduce((acc, c) => acc + c.balance, 0);
 
     // --- STRATEGY ENGINE ---
-    const allDebts = [
-        ...loans.map(l => ({ id: l.id, type: 'LOAN', name: l.name, balance: l.currentBalance, rate: l.interestRate || 0 })),
-        ...creditCards.map(c => ({ id: c.id, type: 'CARD', name: c.name, balance: c.balance, rate: c.interestRate || 0 }))
-    ];
-    // Strategy: Avalanche (Highest Rate)
-    const avalancheTarget = [...allDebts].sort((a, b) => b.rate - a.rate)[0];
-    // Strategy: Snowball (Lowest Balance)
-    const snowballTarget = [...allDebts].sort((a, b) => a.balance - b.balance)[0];
+    const [strategy, setStrategy] = useState<'SNOWBALL' | 'AVALANCHE'>('SNOWBALL');
 
-    const useAvalanche = avalancheTarget && snowballTarget && (avalancheTarget.rate - snowballTarget.rate > 5);
-    const recommended = useAvalanche ? avalancheTarget : snowballTarget;
-    const strategyReason = useAvalanche ? "Método Avalancha (Ahorro Interés)" : "Método Bola de Nieve (Motivación)";
+    // Filter active debts
+    const activeLoans = loans.filter(l => l.currentBalance > 0);
+    const activeCards = creditCards.filter(c => c.balance > 0);
+
+    // Sorting Logic
+    const sortedLoans = [...activeLoans].sort((a, b) => {
+        if (strategy === 'SNOWBALL') return a.currentBalance - b.currentBalance; // Menor saldo primero
+        return (b.interestRate || 0) - (a.interestRate || 0); // Mayor interés primero
+    });
+
+    const sortedCards = [...activeCards].sort((a, b) => {
+        if (strategy === 'SNOWBALL') return a.balance - b.balance;
+        return (b.interestRate || 0) - (a.interestRate || 0);
+    });
+
+    // Determine absolute top priority across both types
+    // We create a temporary unified list just to find the top 1
+    const allDebts = [
+        ...activeLoans.map(l => ({ id: l.id, type: 'LOAN', val: strategy === 'SNOWBALL' ? l.currentBalance : (l.interestRate || 0) })),
+        ...activeCards.map(c => ({ id: c.id, type: 'CARD', val: strategy === 'SNOWBALL' ? c.balance : (c.interestRate || 0) }))
+    ];
+
+    // Snowball: Min value wins. Avalanche: Max value wins.
+    const topPriority = allDebts.sort((a, b) => strategy === 'SNOWBALL' ? a.val - b.val : b.val - a.val)[0];
+
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -142,19 +157,41 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                     </h2>
                     <p className="text-zinc-500 font-medium">Visualiza y aniquila tus deudas.</p>
                 </div>
-                <div className="text-right">
+
+                {/* STRATEGY TOGGLE */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-xl">
+                    <button
+                        onClick={() => setStrategy('SNOWBALL')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${strategy === 'SNOWBALL' ? 'bg-white dark:bg-black shadow-sm text-blue-600 dark:text-blue-400' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                    >
+                        ❄️ Bola de Nieve
+                    </button>
+                    <button
+                        onClick={() => setStrategy('AVALANCHE')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${strategy === 'AVALANCHE' ? 'bg-white dark:bg-black shadow-sm text-orange-600 dark:text-orange-400' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                    >
+                        🏔️ Avalancha
+                    </button>
+                </div>
+
+                <div className="text-right hidden md:block">
                     <p className="text-xs font-bold text-zinc-400 uppercase">Deuda Total</p>
                     <p className="text-4xl font-black text-red-500">${totalDebt.toLocaleString()}</p>
                 </div>
             </div>
 
-
-            {/* STRATEGY CALCULATION (Hidden Logic) */}
-            {(() => {
-                // We calculate best strategy here to pass down to cards
-                // But since we are mapping, we'll do it inline or repeating is cheap enough for now
-                return null;
-            })()}
+            {/* STRATEGY EXPLAINER */}
+            <div className={`p-4 rounded-2xl border mb-8 flex items-start gap-3 ${strategy === 'SNOWBALL' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 text-blue-800 dark:text-blue-200' : 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800 text-orange-800 dark:text-orange-200'}`}>
+                <div className="text-2xl">{strategy === 'SNOWBALL' ? '❄️' : '🏔️'}</div>
+                <div>
+                    <h4 className="font-bold">Estrategia Activa: {strategy === 'SNOWBALL' ? 'Bola de Nieve' : 'Avalancha'}</h4>
+                    <p className="text-sm opacity-80 mt-1">
+                        {strategy === 'SNOWBALL'
+                            ? "Ataca primero la deuda más pequeña para ganar impulso psicológico rápido."
+                            : "Ataca primero la deuda con mayor interés para pagar menos dinero a largo plazo."}
+                    </p>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* --- LOANS SECTION --- */}
@@ -171,23 +208,23 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                         </button>
                     </div>
 
-                    {loans.length === 0 ? (
+                    {sortedLoans.length === 0 ? (
                         <div className="p-8 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl text-center text-zinc-400">
                             <Wallet className="mx-auto mb-2 opacity-50" size={32} />
                             No tienes préstamos activos
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {loans.map(loan => {
+                            {sortedLoans.map(loan => {
                                 const progress = Math.min(((loan.totalAmount - loan.currentBalance) / loan.totalAmount) * 100, 100);
-                                const isRecommended = recommended?.id === loan.id && recommended?.type === 'LOAN';
+                                const isPriority = topPriority?.id === loan.id && topPriority?.type === 'LOAN';
 
                                 return (
-                                    <div key={loan.id} className={`bg-white dark:bg-zinc-900 border ${isRecommended ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-zinc-100 dark:border-zinc-800'} p-5 rounded-3xl shadow-sm hover:shadow-md transition-all group relative`}>
-                                        {isRecommended && (
+                                    <div key={loan.id} className={`bg-white dark:bg-zinc-900 border ${isPriority ? 'border-indigo-500 ring-2 ring-indigo-500/20 transform scale-[1.02]' : 'border-zinc-100 dark:border-zinc-800'} p-5 rounded-3xl shadow-sm hover:shadow-md transition-all group relative`}>
+                                        {isPriority && (
                                             <div className="absolute -top-3 left-6 px-3 py-1 bg-indigo-500 text-white text-[10px] uppercase font-bold rounded-full shadow-lg flex items-center gap-1">
                                                 <TrendingDown size={12} />
-                                                Recomendado por IA
+                                                Prioridad
                                             </div>
                                         )}
                                         <div className="flex justify-between items-start mb-2">
@@ -245,24 +282,24 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                         </button>
                     </div>
 
-                    {creditCards.length === 0 ? (
+                    {sortedCards.length === 0 ? (
                         <div className="p-8 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl text-center text-zinc-400">
                             <CardIcon className="mx-auto mb-2 opacity-50" size={32} />
-                            No tienes tarjetas registradas
+                            No tienes tarjetas con saldo pendiente
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {creditCards.map(card => {
+                            {sortedCards.map((card, index) => {
                                 const utilization = (card.balance / card.limit) * 100;
                                 const available = card.limit - card.balance;
-                                const isRecommended = recommended?.id === card.id && recommended?.type === 'CARD';
+                                const isPriority = topPriority?.id === card.id && topPriority?.type === 'CARD';
 
                                 return (
-                                    <div key={card.id} className={`relative overflow-hidden ${isRecommended ? 'bg-linear-to-br from-indigo-900 to-zinc-900 ring-4 ring-indigo-500/30' : 'bg-linear-to-br from-zinc-800 to-zinc-950'} text-white p-6 rounded-[2rem] shadow-lg group transition-all`}>
-                                        {isRecommended && (
-                                            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-indigo-500 text-white text-[10px] uppercase font-bold rounded-full shadow-lg z-20 flex items-center gap-1 border border-white/20">
-                                                <TrendingDown size={12} />
-                                                Prioridad Estratégica
+                                    <div key={card.id} className={`relative overflow-hidden ${isPriority ? 'bg-linear-to-br from-indigo-900 to-zinc-900 ring-4 ring-indigo-500/30 transform scale-[1.02]' : 'bg-linear-to-br from-zinc-800 to-zinc-950'} text-white p-6 rounded-[2rem] shadow-lg group transition-all`}>
+                                        {isPriority && (
+                                            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-indigo-500 text-white text-[10px] uppercase font-black tracking-widest rounded-full shadow-lg z-20 flex items-center gap-2 border border-white/20">
+                                                <TrendingDown size={14} />
+                                                objetivo prioritario
                                             </div>
                                         )}
                                         {/* Card Design Elements */}

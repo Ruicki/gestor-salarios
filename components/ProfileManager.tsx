@@ -1,33 +1,49 @@
-'use client';
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Profile } from '@prisma/client';
-import { createProfile, deleteProfile } from '@/app/actions/budget';
+import { createProfile, deleteProfile, getProfiles } from '@/app/actions/budget';
+import { generateAccessCode, resetPassword } from '@/app/actions/auth';
 import { toast } from 'sonner';
-import { Trash2, UserPlus, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Trash2, UserPlus, AlertTriangle, ShieldAlert, KeyRound, Loader2, Eye, Lock } from 'lucide-react';
 import { confirmDelete } from '@/components/DeleteConfirmation';
 
 interface ProfileManagerProps {
-    profiles: (Profile & { role: string })[];
+    profiles: (Profile & { role: string; email?: string | null })[];
     currentProfileId: number | null;
     onUpdate: () => void;
     onClose: () => void;
+    onImpersonate?: (profile: any) => void;
 }
 
-export default function ProfileManager({ profiles, currentProfileId, onUpdate, onClose }: ProfileManagerProps) {
+export default function ProfileManager({ profiles: initialProfiles, currentProfileId, onUpdate, onClose, onImpersonate }: ProfileManagerProps) {
+    // START: Fetching Logic
+    const [profiles, setProfiles] = useState<any[]>(initialProfiles);
+    const [loading, setLoading] = useState(true);
     const [newProfileName, setNewProfileName] = useState('');
-    const MAX_PROFILES = 5;
+
+    const fetchProfiles = async () => {
+        try {
+            setLoading(true);
+            const data = await getProfiles();
+            setProfiles(data);
+        } catch (error) {
+            console.error("Error fetching profiles:", error);
+            toast.error("Error al cargar la lista de usuarios");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProfiles();
+    }, []);
+    // END: Fetching Logic
 
     async function handleCreate() {
         if (!newProfileName.trim()) return;
-        if (profiles.length >= MAX_PROFILES) {
-            toast.error(`Límite de ${MAX_PROFILES} perfiles alcanzado.`);
-            return;
-        }
 
         try {
             await createProfile(newProfileName);
-            onUpdate();
+            await fetchProfiles(); // Refresh local list
             setNewProfileName('');
             toast.success("Perfil creado exitosamente");
         } catch (error) {
@@ -44,7 +60,7 @@ export default function ProfileManager({ profiles, currentProfileId, onUpdate, o
         confirmDelete(async () => {
             try {
                 await deleteProfile(id);
-                onUpdate();
+                await fetchProfiles(); // Refresh local list
                 toast.success("Perfil y todos sus datos eliminados");
             } catch (error) {
                 toast.error("Error eliminando perfil");
@@ -52,79 +68,203 @@ export default function ProfileManager({ profiles, currentProfileId, onUpdate, o
         });
     }
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-                <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0">
-                    <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
-                        <span className="bg-purple-100 dark:bg-purple-900/30 p-1.5 rounded-lg text-purple-600 dark:text-purple-400">👤</span>
-                        Gestionar Perfiles
-                    </h3>
-                    <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full">✕</button>
-                </div>
+    async function handlePasswordReset(id: number, name: string) {
+        // Simple prompt for password reset
+        const newPass = window.prompt(`Ingresa la nueva contraseña para ${name}:`, "1234");
 
-                <div className="p-5 space-y-5 overflow-y-auto">
-                    {/* Create New Profile Section */}
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 block">Crear Nuevo Perfil</label>
-                        <div className="flex flex-col md:flex-row gap-2">
-                            <input
-                                placeholder="Ej: Negocio, Casa"
-                                className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500/20"
-                                value={newProfileName}
-                                onChange={e => setNewProfileName(e.target.value)}
-                                disabled={profiles.length >= MAX_PROFILES}
-                            />
-                            <button
-                                onClick={handleCreate}
-                                disabled={!newProfileName.trim() || profiles.length >= MAX_PROFILES}
-                                className="w-full md:w-auto bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:hover:bg-purple-600 text-white py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                            >
-                                <UserPlus size={18} />
-                                <span className="md:hidden text-sm font-bold">Crear</span>
-                            </button>
+        if (newPass === null) return; // User cancelled
+
+        if (newPass.trim().length < 4) {
+            toast.error("La contraseña debe tener al menos 4 caracteres");
+            return;
+        }
+
+        const promise = resetPassword(id, newPass);
+
+        toast.promise(promise, {
+            loading: 'Actualizando contraseña...',
+            success: 'Contraseña actualizada correctamente',
+            error: 'Error al actualizar contraseña'
+        });
+    }
+
+    // Ensure IDs are compared as primitive numbers to avoid type mismatch
+    const currentIdNum = Number(currentProfileId);
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+
+                {/* HEADER */}
+                <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0 backdrop-blur-sm">
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h3 className="font-black text-2xl text-zinc-900 dark:text-white flex items-center gap-3">
+                                <span className="bg-indigo-100 dark:bg-indigo-500/20 p-2 rounded-xl text-indigo-600 dark:text-indigo-400">
+                                    <ShieldAlert size={24} />
+                                </span>
+                                Panel de Administración
+                            </h3>
+                            <div className="flex items-center gap-2 mt-1 ml-1">
+                                <p className="text-zinc-500 text-sm">Gestiona usuarios y accesos</p>
+                                <button
+                                    onClick={fetchProfiles}
+                                    disabled={loading}
+                                    className="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-indigo-500 transition-colors"
+                                    title="Recargar lista"
+                                >
+                                    <Loader2 size={14} className={loading ? 'animate-spin' : ''} />
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    <button
+                        onClick={onClose}
+                        className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white p-3 rounded-full transition-all hover:rotate-90"
+                    >
+                        ✕
+                    </button>
+                </div>
 
-                    {/* Profiles List */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Mis Perfiles ({profiles.length}/{MAX_PROFILES})</label>
-                        {profiles.map(profile => (
-                            <div key={profile.id} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${profile.id === currentProfileId ? 'bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-500/20' : 'bg-white dark:bg-zinc-800/30 border-zinc-200 dark:border-zinc-800'}`}>
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${profile.id === currentProfileId ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-300' : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500'}`}>
-                                        {profile.name.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-1">
-                                            {profile.name}
-                                            {profile.role === 'ADMIN' && (
-                                                <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-500 text-[8px] px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                                                    Admin
-                                                </span>
-                                            )}
-                                        </p>
-                                        {profile.id === currentProfileId && <span className="text-[9px] font-bold bg-purple-200 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full ml-auto md:ml-0 inline-block mt-1">ACTIVO</span>}
-                                    </div>
-                                </div>
-                                {profile.id !== currentProfileId && (
-                                    <button
-                                        onClick={() => handleDelete(profile.id)}
-                                        className="text-zinc-400 hover:text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                                        title="Eliminar perfil"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                )}
+                <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
+
+                    {/* 1. CREAR PERFIL */}
+                    <div className="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-3xl border border-zinc-100 dark:border-zinc-800">
+                        <div className="flex flex-col md:flex-row gap-4 items-end">
+                            <div className="w-full">
+                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 block ml-1">Crear Perfil sin Correo (Ghost)</label>
+                                <input
+                                    placeholder="Nombre del nuevo perfil (ej. Socio, Hijo)"
+                                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                    value={newProfileName}
+                                    onChange={e => setNewProfileName(e.target.value)}
+                                />
                             </div>
-                        ))}
+                            <button
+                                onClick={handleCreate}
+                                disabled={!newProfileName.trim()}
+                                className="w-full md:w-auto shrink-0 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                            >
+                                <UserPlus size={20} />
+                                <span>Crear</span>
+                            </button>
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-3 ml-1">
+                            * Estos perfiles se crean vacíos. Luego puedes generar un código para que el usuario real los reclame.
+                        </p>
                     </div>
 
-                    <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-xl flex gap-2 items-center">
-                        <ShieldAlert className="text-blue-500 shrink-0" size={14} />
-                        <p className="text-[10px] text-blue-600 dark:text-blue-400 leading-tight">
-                            Al eliminar un perfil se borrarán permanentemente todos sus datos asociados.
-                        </p>
+                    {/* 2. LISTA DE PERFILES */}
+                    <div>
+                        <div className="flex items-center justify-between mb-4 px-1">
+                            <h4 className="font-bold text-zinc-900 dark:text-zinc-100">Usuarios Registrados</h4>
+                            <span className="text-xs font-bold bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full text-zinc-500">
+                                Total: {profiles.length}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                            {profiles.map(profile => (
+                                <div
+                                    key={profile.id}
+                                    className={`relative p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:shadow-lg ${Number(profile.id) === currentIdNum
+                                            ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-500/30'
+                                            : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+                                        }`}
+                                >
+                                    {/* Info Usuario */}
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-inner ${profile.role === 'ADMIN'
+                                                ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white'
+                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                                            }`}>
+                                            {profile.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-zinc-900 dark:text-white text-lg leading-none">
+                                                    {profile.name}
+                                                </p>
+                                                {profile.role === 'ADMIN' && (
+                                                    <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wide">
+                                                        ADMIN
+                                                    </span>
+                                                )}
+                                                {Number(profile.id) === currentIdNum && (
+                                                    <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wide">
+                                                        TÚ
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-sm text-zinc-500 font-medium mt-1">
+                                                {profile.email || <span className="text-amber-500 italic flex items-center gap-1"><AlertTriangle size={12} /> Sin correo vinculado</span>}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Acciones */}
+                                    {Number(profile.id) !== currentIdNum && (
+                                        <div className="flex items-center gap-2">
+
+                                            {/* IMPERSONATE: FORCE SHOW */}
+                                            <button
+                                                onClick={() => {
+                                                    // Direct call or safe fall back warning
+                                                    if (onImpersonate) {
+                                                        onImpersonate(profile);
+                                                    } else {
+                                                        toast.error("Error: Función de Impersonación no disponible");
+                                                    }
+                                                }}
+                                                className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/10 hover:bg-indigo-100 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-indigo-100 dark:border-indigo-500/20"
+                                                title="Ver como este usuario"
+                                            >
+                                                <Eye size={14} />
+                                                <span>Ver Como</span>
+                                            </button>
+
+                                            {/* RESET PASSWORD */}
+                                            {profile.email && (
+                                                <button
+                                                    onClick={() => handlePasswordReset(profile.id, profile.name)}
+                                                    className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-zinc-200 dark:border-zinc-700"
+                                                    title="Restablecer Contraseña"
+                                                >
+                                                    <Lock size={14} />
+                                                    <span>Reset</span>
+                                                </button>
+                                            )}
+
+                                            {/* Generar Código si no tiene email */}
+                                            {!profile.email && (
+                                                <button
+                                                    onClick={async () => {
+                                                        // @ts-ignore
+                                                        const res = await generateAccessCode(profile.id);
+                                                        if (res.code) {
+                                                            const msg = `CÓDIGO DE INVITACIÓN:\n\n${res.code}\n\nComparte este código con el usuario.`;
+                                                            window.prompt("Copia este código:", res.code);
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-500 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-amber-100 dark:border-amber-500/20"
+                                                >
+                                                    <KeyRound size={14} />
+                                                    <span>Código</span>
+                                                </button>
+                                            )}
+
+                                            <button
+                                                onClick={() => handleDelete(profile.id)}
+                                                className="flex items-center gap-2 bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-500 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-red-100 dark:border-red-500/20"
+                                            >
+                                                <Trash2 size={14} />
+                                                <span>Eliminar</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
