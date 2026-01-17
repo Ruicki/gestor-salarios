@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getProfiles } from '@/app/actions/budget';
 import CreditCardsTab from '@/components/dashboard/tabs/CreditCardsTab';
 import ExpensesTab from '@/components/dashboard/tabs/ExpensesTab';
@@ -23,12 +24,32 @@ interface BudgetDashboardProps {
 }
 
 export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    // Obtener pestaña de URL o por defecto 'incomes'
+    const currentTab = searchParams.get('tab') || 'incomes';
+    const [activeTab, setActiveTab] = useState(currentTab);
+
+    // Sincronizar estado con cambios de URL
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) setActiveTab(tab);
+    }, [searchParams]);
+
+    const updateTab = (tab: string) => {
+        setActiveTab(tab);
+        const params = new URLSearchParams(searchParams);
+        params.set('tab', tab);
+        router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    };
+
     const [activeProfile, setActiveProfile] = useState<ProfileWithData>(initialProfile);
-    // Removed profiles list state as we focus on single user view (Admin can fetch list in Manager)
+    // Se eliminó el estado de lista de perfiles ya que nos enfocamos en vista de usuario único (Admin puede obtener lista en Gestor)
     const [profiles, setProfiles] = useState<ProfileWithData[]>([initialProfile]);
 
-    // UI States
-    const [activeTab, setActiveTab] = useState<'incomes' | 'expenses' | 'goals' | 'debts' | 'insights' | 'accounts'>('incomes');
+    // ... estado existente ...
     const [isPrivateMode, setIsPrivateMode] = useState(false);
     const [isImpersonating, setIsImpersonating] = useState(false);
 
@@ -47,7 +68,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
     const [showProfileManager, setShowProfileManager] = useState(false);
     const [showUserSettings, setShowUserSettings] = useState(false);
 
-    // Refresh data handler
+    // Manejador de actualización de datos
     async function refreshData() {
         // En un caso real haríamos un server action para refetchear SOLO el perfil actual
         // Por simplicidad, recargamos la página o usamos router.refresh()
@@ -55,16 +76,16 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
         window.location.reload();
     }
 
-    const activeProfileData = activeProfile; // Alias for cleaner diffs below if needed, but we used activeProfile elsewhere
+    const activeProfileData = activeProfile; // Alias para diffs más limpios abajo si es necesario, pero usamos activeProfile en otros lugares
 
-    // --- HANDLERS ---
+    // --- MANEJADORES ---
     const handleLogout = async () => {
         await logout();
     }
 
 
-    // --- CALCULATIONS ---
-    // --- CALCULATIONS ---
+
+    // --- CÁLCULOS ---
     const expensesList = activeProfile?.expenses?.filter((e: Expense) => e.category !== 'Deuda') || [];
     const debtsList = activeProfile?.expenses?.filter((e: Expense) => e.category === 'Deuda') || [];
 
@@ -105,18 +126,18 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
     // se creará un gasto real, y se restaría dos veces (Proyección + Gasto Real).
     // Por lo tanto, el "Disponible" reflejará el dinero libre REAL hasta que el usuario decida ejecutar el pago de la meta.
 
-    // NEW LOGIC (ACCOUNTS PHASE):
+    // NUEVA LÓGICA (FASE CUENTAS):
     // El "Disponible" ya no es una resta teórica de Ingresos - Gastos.
     // Ahora es la SUMA REAL de los saldos de las Cuentas (Banco + Efectivo + Ahorros).
     const balance = activeProfile?.accounts?.reduce((sum, acc) => sum + acc.balance, 0) || 0;
 
-    // NET WORTH CALCULATION
+    // CÁLCULO DE PATRIMONIO NETO
     const totalSavings = activeProfile?.goals?.reduce((sum, goal) => sum + goal.currentAmount, 0) || 0;
     const totalLoans = activeProfile?.loans?.reduce((sum, loan) => sum + loan.currentBalance, 0) || 0;
     const totalCreditDebt = (activeProfile?.creditCards?.reduce((sum, card) => sum + card.balance, 0) || 0) + totalLoans;
     const netWorth = balance + totalSavings - totalCreditDebt;
 
-    // --- LOGIC: REMINDERS ---
+    // --- LÓGICA: RECORDATORIOS ---
     const today = new Date().getDate();
     const reminders = expensesList.filter((exp: Expense) => {
         if (!exp.dueDate) return false;
@@ -127,7 +148,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
     return (
         <div className={`w-full max-w-[1400px] mx-auto space-y-12 pb-24 ${isPrivateMode ? 'private-mode' : ''}`}>
 
-            {/* Global Styles for Private Mode Blur */}
+            {/* Estilos Globales para Desenfoque en Modo Privado */}
             <style jsx global>{`
                 .private-mode .blur-sensitive {
                     filter: blur(8px);
@@ -139,7 +160,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                 }
             `}</style>
 
-            {/* IMPERSONATION BANNER */}
+            {/* BANNER DE SUPLANTACIÓN */}
             {isImpersonating && (
                 <div className="fixed top-0 left-0 right-0 bg-indigo-600 text-white z-[100] px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-top">
                     <div className="flex items-center gap-2 font-bold text-sm">
@@ -155,7 +176,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                 </div>
             )}
 
-            {/* HEADER */}
+            {/* ENCABEZADO */}
             <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-zinc-200 dark:border-zinc-800 pb-10">
                 <div className="text-center md:text-left">
                     <h1 className="text-3xl md:text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-linear-to-r from-zinc-900 via-zinc-700 to-zinc-900 dark:from-white dark:via-zinc-400 dark:to-zinc-600 mb-4">
@@ -172,9 +193,9 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                     >
                         {isPrivateMode ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
                     </button>
-                    {/* Profile switcher removed from header since we have a dedicated selector screen. 
-                        We keep ThemeToggle and PrivateMode. 
-                        We add a "Logout/Switch User" button.
+                    {/* Selector de perfil eliminado de encabezado ya que tenemos una pantalla de selector dedicada.
+                        Mantenemos ThemeToggle y PrivateMode.
+                        Añadimos botón de "Cerrar Sesión/Cambiar Usuario".
                     */}
                     <ThemeToggle />
 
@@ -209,7 +230,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                 </div>
             </div>
 
-            {/* PROFILE MANAGER MODAL */}
+            {/* MODAL DE GESTOR DE PERFILES */}
             {
                 showProfileManager && (
                     <ProfileManager
@@ -222,7 +243,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                 )
             }
 
-            {/* USER SETTINGS MODAL */}
+            {/* MODAL DE AJUSTES DE USUARIO */}
             {
                 showUserSettings && (
                     <UserSettings
@@ -275,31 +296,31 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                         </div>
 
                         {/* TABS DE NAVEGACIÓN (RESPONSIVE: GRID MÓVIL / FLEX DESKTOP) */}
-                        <div className="bg-zinc-100 dark:bg-zinc-900/50 p-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 backdrop-blur-sm relative md:sticky md:top-4 z-40 mb-6 md:mb-0 shadow-sm dark:shadow-none">
-                            <div className="grid grid-cols-3 gap-2 md:flex md:overflow-x-auto md:no-scrollbar">
-                                <button onClick={() => setActiveTab('accounts')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 md:py-4 px-2 md:px-6 rounded-xl transition-all ${activeTab === 'accounts' ? 'bg-white dark:bg-zinc-800 text-blue-500 dark:text-blue-400 shadow-sm md:shadow-md' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'}`}>
-                                    <Landmark size={18} className="md:hidden" />
-                                    <span className="text-[10px] md:text-lg font-black uppercase md:normal-case tracking-wide">Cuentas</span>
+                        <div className="bg-white dark:bg-zinc-900/80 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 backdrop-blur-xl relative md:sticky md:top-6 z-40 mb-8 md:mb-0 shadow-xl shadow-zinc-200/50 dark:shadow-none mx-auto max-w-5xl">
+                            <div className="grid grid-cols-3 md:flex md:justify-between gap-1">
+                                <button onClick={() => updateTab('accounts')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'accounts' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                    <Landmark size={18} />
+                                    <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Cuentas</span>
                                 </button>
-                                <button onClick={() => setActiveTab('incomes')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 md:py-4 px-2 md:px-6 rounded-xl transition-all ${activeTab === 'incomes' ? 'bg-white dark:bg-zinc-800 text-emerald-500 dark:text-emerald-400 shadow-sm md:shadow-md' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'}`}>
-                                    <DollarSign size={18} className="md:hidden" />
-                                    <span className="text-[10px] md:text-lg font-black uppercase md:normal-case tracking-wide">Ingresos</span>
+                                <button onClick={() => updateTab('incomes')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'incomes' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                    <DollarSign size={18} />
+                                    <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Ingresos</span>
                                 </button>
-                                <button onClick={() => setActiveTab('expenses')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 md:py-4 px-2 md:px-6 rounded-xl transition-all ${activeTab === 'expenses' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm md:shadow-md' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'}`}>
-                                    <TrendingUp size={18} className="md:hidden" />
-                                    <span className="text-[10px] md:text-lg font-black uppercase md:normal-case tracking-wide">Gastos</span>
+                                <button onClick={() => updateTab('expenses')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'expenses' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                    <TrendingUp size={18} />
+                                    <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Gastos</span>
                                 </button>
-                                <button onClick={() => setActiveTab('goals')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 md:py-4 px-2 md:px-6 rounded-xl transition-all ${activeTab === 'goals' ? 'bg-white dark:bg-zinc-800 text-cyan-500 dark:text-cyan-400 shadow-sm md:shadow-md' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'}`}>
-                                    <Target size={18} className="md:hidden" />
-                                    <span className="text-[10px] md:text-lg font-black uppercase md:normal-case tracking-wide">Metas</span>
+                                <button onClick={() => updateTab('goals')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'goals' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                    <Target size={18} />
+                                    <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Metas</span>
                                 </button>
-                                <button onClick={() => setActiveTab('debts')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 md:py-4 px-2 md:px-6 rounded-xl transition-all ${activeTab === 'debts' ? 'bg-white dark:bg-zinc-800 text-red-500 dark:text-red-400 shadow-sm md:shadow-md' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'}`}>
-                                    <CardIcon size={18} className="md:hidden" />
-                                    <span className="text-[10px] md:text-lg font-black uppercase md:normal-case tracking-wide">Deudas</span>
+                                <button onClick={() => updateTab('debts')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'debts' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                    <CardIcon size={18} />
+                                    <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Deudas</span>
                                 </button>
-                                <button onClick={() => setActiveTab('insights')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 md:py-4 px-2 md:px-6 rounded-xl transition-all ${activeTab === 'insights' ? 'bg-white dark:bg-zinc-800 text-purple-500 dark:text-purple-400 shadow-sm md:shadow-md' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'}`}>
-                                    <Search size={18} className="md:hidden" />
-                                    <span className="text-[10px] md:text-lg font-black uppercase md:normal-case tracking-wide">Tabla</span>
+                                <button onClick={() => updateTab('insights')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'insights' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                    <Search size={18} />
+                                    <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Tabla</span>
                                 </button>
                             </div>
                         </div>
@@ -342,7 +363,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                             {activeTab === 'goals' && (
                                 <GoalsTab
                                     goals={activeProfile.goals || []}
-                                    accounts={activeProfile.accounts || []} // Pass accounts
+                                    accounts={activeProfile.accounts || []} // Pasar cuentas
                                     profileId={activeProfile.id}
                                     onUpdate={refreshData}
                                 />
@@ -353,7 +374,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                                 <DebtsTab
                                     creditCards={activeProfile.creditCards || []}
                                     loans={activeProfile.loans || []}
-                                    accounts={activeProfile.accounts || []} // Pass accounts for payment source
+                                    accounts={activeProfile.accounts || []} // Pasar cuentas para fuente de pago
                                     profileId={activeProfile.id}
                                     onUpdate={refreshData}
                                 />
@@ -370,10 +391,10 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                             )}
                         </div>
 
-                        {/* Duplicate ProfileManager removed */}
+                        {/* ProfileManager duplicado eliminado */}
                     </>
                 ) : (
-                    // Fallback (should not be reached due to ProfileSelector logic above, but kept clean)
+                    // Fallback (no debería alcanzarse debido a lógica de ProfileSelector arriba, pero se mantiene limpio)
                     <div className="flex items-center justify-center h-[50vh]">
                         <p className="text-zinc-400">Seleccionando perfil...</p>
                     </div>

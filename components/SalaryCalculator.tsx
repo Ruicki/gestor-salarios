@@ -29,7 +29,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
         bonus: 0,
         company: '',
         absentDays: 0,
-        paymentDate: new Date().toISOString().split('T')[0], // Default hoy
+        paymentDate: new Date().toISOString().split('T')[0], // Por defecto hoy
         accountId: ''
     });
 
@@ -138,7 +138,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
                 decimo: estimatedDecimoNet,
                 decimoGross: estimatedDecimoGross,
                 bonus: form.bonus,
-                isDecimoIncluded: isDecimoMonth // Flag para UI
+                isDecimoIncluded: isDecimoMonth // Indicador para UI
             });
 
             const successMsg = isDecimoMonth
@@ -157,7 +157,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
     };
 
     return (
-        <div className={`bg-white dark:bg-zinc-900/80 backdrop-blur-xl p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-xl dark:shadow-2xl border border-zinc-200 dark:border-zinc-700/50 w-full relative overflow-hidden group hover:shadow-blue-500/10 transition-all duration-500 ${isEmbedded ? 'shadow-none border-0 !p-0 !bg-transparent' : ''}`}>
+        <div className={`bg-white dark:bg-zinc-900/80 backdrop-blur-xl p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-xl dark:shadow-2xl border border-zinc-200 dark:border-zinc-700/50 w-full relative overflow-hidden group hover:shadow-blue-500/10 transition-all duration-500 ${isEmbedded ? 'shadow-none border-0 p-0! bg-transparent!' : ''}`}>
             {!isEmbedded && <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-red-500 via-orange-500 to-yellow-500"></div>}
 
             {!isEmbedded && <h2 className="text-2xl md:text-4xl font-black mb-6 md:mb-8 text-center text-zinc-900 dark:text-white tracking-tight">
@@ -180,7 +180,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
             </div>
 
             <div className="space-y-6">
-                {/* INPUT EMPRESA */}
+                {/* ENTRADA EMPRESA */}
                 <div className="relative group/input">
                     <label className="block text-sm font-bold uppercase tracking-wider mb-2 text-zinc-500 dark:text-zinc-400 group-hover/input:text-cyan-500 transition-colors">
                         Empresa o Entidad
@@ -198,7 +198,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
                     </div>
                 </div>
 
-                {/* INPUT SALARIO */}
+                {/* ENTRADA SALARIO */}
                 <div className="relative group/input">
                     <label className="block text-sm font-bold uppercase tracking-wider mb-2 text-zinc-500 dark:text-zinc-400 group-hover/input:text-cyan-500 transition-colors">
                         Salario {frequency === 'monthly' ? 'Mensual' : 'Quincenal'}
@@ -216,7 +216,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
                     </div>
                 </div>
 
-                {/* INPUT BONOS */}
+                {/* ENTRADA BONOS */}
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="relative group/input flex-1">
                         <label className="block text-sm font-bold uppercase tracking-wider mb-2 text-zinc-500 dark:text-zinc-400 group-hover/input:text-cyan-500 transition-colors">
@@ -235,7 +235,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
                         </div>
                     </div>
 
-                    {/* INPUT DÍAS FALTADOS */}
+                    {/* ENTRADA DÍAS FALTADOS */}
                     <div className="relative group/input flex-1">
                         <label className="block text-sm font-bold uppercase tracking-wider mb-2 text-zinc-500 dark:text-zinc-400 group-hover/input:text-red-400 transition-colors">
                             Días Faltados
@@ -254,7 +254,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
                     </div>
                 </div>
 
-                {/* INPUT FECHA DE PAGO */}
+                {/* ENTRADA FECHA DE PAGO */}
                 <div className="relative group/input">
                     <label className="block text-sm font-bold uppercase tracking-wider mb-2 text-zinc-500 dark:text-zinc-400 group-hover/input:text-cyan-500 transition-colors">
                         Fecha de Pago
@@ -308,7 +308,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
                 {/* RESULTADO */}
                 {result && (
                     <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
-                        {/* Breakdown Card */}
+                        {/* Tarjeta de Desglose */}
                         <div className="bg-zinc-100 dark:bg-black/20 p-6 rounded-2xl border border-zinc-200 dark:border-white/10 text-base space-y-3">
                             <div className="flex justify-between text-zinc-600 dark:text-zinc-300">
                                 <span>Salario Bruto</span>
@@ -343,7 +343,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
                             </div>
                         </div>
 
-                        {/* Net Salary Main Card */}
+                        {/* Tarjeta Principal de Salario Neto */}
                         <div className="p-8 bg-emerald-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 rounded-2xl text-center relative overflow-hidden">
                             <p className="text-sm text-orange-600 dark:text-orange-400 font-bold uppercase tracking-widest mb-2">
                                 Disponible en Mano

@@ -17,7 +17,7 @@ export default function BudgetPage() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'expenses' | 'goals'>('expenses');
 
-    // Form States
+    // Estados del Formulario
     const [newProfileName, setNewProfileName] = useState('');
     const [expenseForm, setExpenseForm] = useState({
         name: '',
@@ -89,7 +89,7 @@ export default function BudgetPage() {
                 targetAmount: parseFloat(goalForm.targetAmount),
                 profileId: selectedProfileId,
                 deadline: goalForm.deadline ? new Date(goalForm.deadline) : undefined,
-                type: 'VARIABLE' // Default type for basic goals
+                type: 'VARIABLE' // Tipo por defecto para metas básicas
             });
             await loadProfiles();
             setGoalForm({ name: '', targetAmount: '', deadline: '' });
@@ -279,7 +279,7 @@ export default function BudgetPage() {
 
                     {/* COLUMNA 2: LISTAS */}
                     <div className="lg:col-span-2 space-y-8">
-                        {/* Summary Cards Row */}
+                        {/* Fila de Tarjetas de Resumen */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-linear-to-br from-zinc-800 to-zinc-900 p-6 rounded-3xl border border-zinc-700/50">
                                 <h2 className="text-zinc-400 font-medium">Gastos Mensuales</h2>

@@ -51,7 +51,7 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 
-                {/* Header */}
+                {/* Encabezado */}
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
                     <div>
                         <h2 className="text-2xl font-black text-zinc-900 dark:text-white">Nueva Cuenta</h2>
@@ -62,7 +62,7 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
                     </button>
                 </div>
 
-                {/* Content */}
+                {/* Contenido */}
                 <div className="p-8 overflow-y-auto">
                     {step === 1 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -72,12 +72,7 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
                                 description="Corriente o Ahorros básicos"
                                 onClick={() => handleTypeSelect('BANK')}
                             />
-                            <OptionCard
-                                icon={<Banknote className="w-8 h-8 text-emerald-500" />}
-                                title="Efectivo"
-                                description="Dinero físico en mano"
-                                onClick={() => handleTypeSelect('CASH')}
-                            />
+                            {/* Opción de Efectivo eliminada para forzar regla de instancia única de efectivo */}
                             <OptionCard
                                 icon={<Wallet className="w-8 h-8 text-purple-500" />}
                                 title="Billetera Digital"
@@ -123,7 +118,7 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
                     )}
                 </div>
 
-                {/* Footer */}
+                {/* Pie de página */}
                 <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex justify-end gap-3">
                     {step === 2 && (
                         <button

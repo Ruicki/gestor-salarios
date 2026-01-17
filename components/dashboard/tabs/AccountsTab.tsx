@@ -17,7 +17,7 @@ interface AccountsTabProps {
 export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsTabProps) {
     const [isCreating, setIsCreating] = useState(false);
     const [isTransferring, setIsTransferring] = useState(false);
-    const [selectedAccount, setSelectedAccount] = useState<Account | null>(null); // For history modal
+    const [selectedAccount, setSelectedAccount] = useState<Account | null>(null); // Para el modal de historial
     const [loading, setLoading] = useState(false);
     const handleCreateSuccess = () => {
         setIsCreating(false);
@@ -60,7 +60,7 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header / Summary */}
+            {/* Encabezado / Resumen */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold dark:text-white">Cuentas y Efectivo</h2>
@@ -90,7 +90,7 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
                 </div>
             </div>
 
-            {/* Create Wizard */}
+            {/* Asistente de Creación */}
             {isCreating && (
                 <AccountWizard
                     profileId={profileId}
@@ -107,7 +107,7 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
                 />
             )}
 
-            {/* History Modal */}
+            {/* Modal de Historial */}
             {selectedAccount && (
                 <AccountHistoryModal
                     account={selectedAccount}
@@ -116,7 +116,7 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
                 />
             )}
 
-            {/* List */}
+            {/* Lista */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {accounts.map(acc => {
                     const isPositive = acc.balance >= 0;
@@ -133,26 +133,28 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
                                 ${!['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800' : ''}
                             `}
                         >
-                            {/* Background Decorations */}
+                            {/* Decoraciones de Fondo */}
                             <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
                             <div className="absolute bottom-0 left-0 -ml-12 -mb-12 w-48 h-48 bg-black/10 rounded-full blur-3xl pointer-events-none" />
 
                             <div className="relative z-10 flex flex-col justify-between h-full min-h-[160px]">
-                                {/* Header */}
+                                {/* Encabezado */}
                                 <div className="flex justify-between items-start">
                                     <div className={`p-3 rounded-2xl backdrop-blur-md ${['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'bg-white/20 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white'}`}>
                                         {getIcon(acc.type)}
                                     </div>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleDelete(acc.id); }}
-                                        className={`p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'hover:bg-white/20 text-white' : 'text-zinc-400 hover:text-red-500 hover:bg-red-50'}`}
-                                        title="Eliminar"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
+                                    {acc.name !== 'Efectivo' && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(acc.id); }}
+                                            className={`p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'hover:bg-white/20 text-white' : 'text-zinc-400 hover:text-red-500 hover:bg-red-50'}`}
+                                            title="Eliminar"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    )}
                                 </div>
 
-                                {/* Content */}
+                                {/* Contenido */}
                                 <div className="mt-8">
                                     <div className="flex items-center gap-2 mb-2 opacity-80">
                                         <span className="text-xs font-bold uppercase tracking-widest">
@@ -178,7 +180,7 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
                         </div>
                         <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Sin cuentas activas</h3>
                         <p className="text-zinc-500 max-w-sm mx-auto">
-                            Comienza agregando tu primera cuenta bancaria o efectivo para llevar el control.
+                            {/* Lógica para Reversión (Si es necesario, lógica futura) */}Comienza agregando tu primera cuenta bancaria o efectivo para llevar el control.
                         </p>
                         <button
                             onClick={() => setIsCreating(true)}

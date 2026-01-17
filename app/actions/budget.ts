@@ -1,15 +1,15 @@
-'use server'
+'use server';
 
-import { prisma } from "@/lib/prisma";
 import { Expense, Goal, Profile, AdditionalIncome, Salary, CreditCard, Account, Loan } from "@prisma/client";
+import { prisma } from '@/lib/prisma';
 import { revalidatePath } from "next/cache";
 
 // --- PROFILES ---
 export async function createProfile(name: string): Promise<Profile> {
-    // Check if any profiles exist
+    // Verificar si existen perfiles
     const count = await prisma.profile.count();
 
-    // First profile is ADMIN, others are USER
+    // El primer perfil es ADMIN, los demás son USUARIO
     const role = count === 0 ? 'ADMIN' : 'USER';
 
     const profile = await prisma.profile.create({
@@ -34,7 +34,11 @@ export async function createProfile(name: string): Promise<Profile> {
 export async function getProfiles(): Promise<(Profile & { expenses: Expense[], goals: Goal[], incomes: AdditionalIncome[], salaries: Salary[], creditCards: CreditCard[], accounts: Account[] })[]> {
     return await prisma.profile.findMany({
         include: {
-            expenses: true,
+            expenses: {
+                include: {
+                    categoryRel: true
+                }
+            },
             goals: true,
             incomes: true,
             salaries: true,
@@ -53,9 +57,9 @@ export async function deleteProfile(id: number): Promise<void> {
         prisma.salary.deleteMany({ where: { profileId: id } }),
         prisma.additionalIncome.deleteMany({ where: { profileId: id } }),
         prisma.creditCard.deleteMany({ where: { profileId: id } }),
-        prisma.loan.deleteMany({ where: { profileId: id } }), // New Loan deletion
-        prisma.account.deleteMany({ where: { profileId: id } }), // Added Account deletion
-        prisma.category.deleteMany({ where: { profileId: id } }), // Fix: Delete categories before profile
+        prisma.loan.deleteMany({ where: { profileId: id } }), // Eliminación de nuevos préstamos
+        prisma.account.deleteMany({ where: { profileId: id } }), // Eliminación de cuentas agregada
+        prisma.category.deleteMany({ where: { profileId: id } }), // Corrección: Eliminar categorías antes del perfil
         prisma.profile.delete({ where: { id } })
     ]);
     revalidatePath('/budget');
@@ -82,14 +86,14 @@ export async function adjustAccountBalance(accountId: number, newBalance: number
     if (!account) throw new Error("Cuenta no encontrada");
 
     const difference = newBalance - account.balance;
-    if (difference === 0) return; // No change
+    if (difference === 0) return; // Sin cambios
 
-    // Create an adjustment record (Transfer of type ADJUSTMENT? Or just an Expense/Income?)
-    // Let's use Expense/Income for now to track why balance changed in reports.
-    // If diff > 0 (Surplus) -> Income
-    // If diff < 0 (Deficit) -> Expense
+    // Crear un registro de ajuste (¿Transferencia de tipo AJUSTE? ¿O solo un Gasto/Ingreso?)
+    // Usaremos Gasto/Ingreso por ahora para rastrear por qué cambió el saldo en los reportes.
+    // Si la diferencia > 0 (Excedente) -> Ingreso
+    // Si la diferencia < 0 (Déficit) -> Gasto
 
-    // Modificación: Solo actualizar el balance sin generar registros de Gasto/Ingreso
+    // Modificación: Solo actualizar el saldo sin generar registros de Gasto/Ingreso
     await prisma.account.update({
         where: { id: accountId },
         data: { balance: newBalance }
@@ -107,7 +111,7 @@ export async function getAccountTransactions(accountId: number) {
         prisma.salary.findMany({ where: { accountId }, orderBy: { createdAt: 'desc' }, take: 50 })
     ]);
 
-    // Normalize and merge
+    // Normalizar y fusionar
     const transactions = [
         ...expenses.map(e => ({ ...e, type: 'EXPENSE', date: e.createdAt })),
         ...incomes.map(i => ({ ...i, type: 'INCOME', date: i.createdAt })),
@@ -116,7 +120,7 @@ export async function getAccountTransactions(accountId: number) {
         ...salaries.map(s => ({ ...s, type: 'SALARY', date: s.createdAt, amount: s.netVal, name: 'Salario' }))
     ];
 
-    // Sort by date desc
+    // Ordenar por fecha desc
     return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
@@ -160,31 +164,40 @@ export async function createTransfer(sourceAccountId: number, destinationAccount
 }
 
 export async function deleteAccount(id: number): Promise<void> {
-    // Transaction to safely unlink related records before deletion
+    const account = await prisma.account.findUnique({ where: { id } });
+    if (account?.name === 'Efectivo' || account?.type === 'CASH') {
+        // ¿Permitir eliminar EFECTIVO solo si no es el predeterminado llamado "Efectivo"? 
+        // El usuario dijo "la cuenta de efectivo". Seguro proteger el nombre "Efectivo" específicamente.
+        if (account.name === 'Efectivo') {
+            throw new Error("No se puede eliminar la cuenta principal de Efectivo.");
+        }
+    }
+
+    // Transacción para desvincular registros relacionados de forma segura antes de la eliminación
     await prisma.$transaction(async (tx) => {
-        // Unlink Expenses
+        // Desvincular Gastos
         await tx.expense.updateMany({
             where: { accountId: id },
             data: { accountId: null }
         });
 
-        // Unlink Incomes
+        // Desvincular Ingresos
         await tx.additionalIncome.updateMany({
             where: { accountId: id },
             data: { accountId: null }
         });
 
-        // Unlink Salaries
+        // Desvincular Salarios
         await tx.salary.updateMany({
             where: { accountId: id },
             data: { accountId: null }
         });
 
-        // Note: For Goals, currently we don't store accountId persistently on the Goal itself, 
-        // only on the transaction (Expense/Income) generated, so unlinking Expenses/Incomes covers it.
-        // But wait, schema check for Goal? No accountId on Goal model in schema view.
+        // Nota: Para Metas, actualmente no guardamos accountId persistentemente en la Meta, 
+        // solo en la transacción (Gasto/Ingreso) generada, así que desvincular Gastos/Ingresos lo cubre.
+        // Pero espera, ¿verificación de esquema para Meta? No hay accountId en el modelo Meta en la vista de esquema.
 
-        // Delete the Account
+        // Eliminar la Cuenta
         await tx.account.delete({ where: { id } });
     });
 
@@ -200,12 +213,12 @@ interface CreateExpenseInput {
     profileId: number;
     dueDate?: number;
     isRecurring?: boolean;
-    // New fields
+    // Nuevos campos
     isOneTime?: boolean;
     paymentMethod?: string;
     linkedCardId?: number;
     accountId?: number;
-    categoryId?: number; // Added
+    categoryId?: number; // Agregado
 }
 
 export async function createExpense(data: CreateExpenseInput): Promise<Expense> {
@@ -221,7 +234,7 @@ export async function createExpense(data: CreateExpenseInput): Promise<Expense> 
             paymentMethod: data.paymentMethod,
             linkedCardId: data.linkedCardId,
             accountId: data.accountId,
-            categoryId: data.categoryId // Mapped
+            categoryId: data.categoryId // Mapeado
         }
     });
 
@@ -299,7 +312,7 @@ interface CreateGoalInput {
     frequency?: string;
     contributionAmount?: number;
     priority?: string;
-    sourceAccountId?: number; // Added
+    sourceAccountId?: number; // Agregado
 }
 
 export async function createGoal(data: CreateGoalInput): Promise<Goal> {
@@ -350,13 +363,13 @@ export async function deleteGoalWithReclaim(id: number, targetAccountId: number)
         if (!goal) throw new Error("Meta no encontrada");
 
         if (goal.currentAmount > 0) {
-            // 1. Move funds to target account
+            // 1. Mover fondos a la cuenta destino
             await tx.account.update({
                 where: { id: targetAccountId },
                 data: { balance: { increment: goal.currentAmount } }
             });
 
-            // 2. Record the income
+            // 2. Registrar el ingreso
             await tx.additionalIncome.create({
                 data: {
                     name: `Retiro por Cierre de Meta: ${goal.name}`,
@@ -368,7 +381,7 @@ export async function deleteGoalWithReclaim(id: number, targetAccountId: number)
             });
         }
 
-        // 3. Delete the goal
+        // 3. Eliminar la meta
         await tx.goal.delete({ where: { id } });
     });
     revalidatePath('/budget');
@@ -463,7 +476,8 @@ interface CreateIncomeInput {
     frequency?: string;
     durationMonths?: number;
     profileId: number;
-    accountId?: number; // New field
+    accountId?: number; // Nuevo campo
+    icon?: string; // Nuevo campo para icono personalizado
 }
 
 export async function createIncome(data: CreateIncomeInput): Promise<AdditionalIncome> {
@@ -476,7 +490,8 @@ export async function createIncome(data: CreateIncomeInput): Promise<AdditionalI
                 frequency: data.frequency,
                 durationMonths: data.durationMonths,
                 profileId: data.profileId,
-                accountId: data.accountId
+                accountId: data.accountId,
+                icon: data.icon
             }
         });
 
@@ -596,6 +611,47 @@ export async function payCreditCard(cardId: number, amount: number, accountId?: 
             where: { id: cardId },
             data: { balance: { decrement: amount } }
         });
+    });
+
+    revalidatePath('/budget');
+}
+
+export async function resetProfileData(profileId: number): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+        // 1. Eliminar todos los datos relacionales
+        await tx.expense.deleteMany({ where: { profileId } });
+        await tx.additionalIncome.deleteMany({ where: { profileId } });
+        await tx.salary.deleteMany({ where: { profileId } });
+        await tx.goal.deleteMany({ where: { profileId } });
+        await tx.creditCard.deleteMany({ where: { profileId } });
+        await tx.loan.deleteMany({ where: { profileId } });
+        await tx.transfer.deleteMany({
+            where: {
+                OR: [
+                    { sourceAccount: { profileId } },
+                    { destinationAccount: { profileId } }
+                ]
+            }
+        });
+
+        // 2. Gestionar Cuentas
+        // Eliminar todas las cuentas excepto la cuenta de EFECTIVO predeterminada
+        await tx.account.deleteMany({
+            where: {
+                profileId,
+                NOT: { type: 'CASH', isDefault: true } // Mantener efectivo predeterminado
+            }
+        });
+
+        // Restablecer saldo de la(s) cuenta(s) predeterminada(s) restante(s)
+        await tx.account.updateMany({
+            where: { profileId },
+            data: { balance: 0 }
+        });
+
+        // ¿Restablecer categorías? El usuario podría querer conservar las categorías.
+        // "Limpiar la cuenta y probarla de cero" generalmente significa transacciones.
+        // Vamos a eliminar datos, pero mantener Categorías ya que son configuración.
     });
 
     revalidatePath('/budget');

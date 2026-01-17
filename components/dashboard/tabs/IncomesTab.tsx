@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { AdditionalIncome, Salary, Account } from '@prisma/client';
-import { deleteIncome } from '@/app/actions/budget'; // Removed createIncome import as it's handled by Wizard
+import { deleteIncome } from '@/app/actions/budget'; // Eliminada importación createIncome ya que se maneja por Wizard
 import { toast } from 'sonner';
 import { confirmDelete } from '@/components/DeleteConfirmation';
 import SalaryCalculator from '@/components/SalaryCalculator';
 import IncomeHistory from '@/components/SalaryHistory';
-import IncomeWizard from '@/components/IncomeWizard'; // Import Wizard
+import IncomeWizard from '@/components/IncomeWizard'; // Importar Wizard
 import { Plus } from 'lucide-react';
 
 interface IncomesTabProps {
@@ -37,7 +37,7 @@ export default function IncomesTab({ incomes, salaries, accounts, profileId, cus
     return (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 animate-in fade-in slide-in-from-bottom-4">
             <div className="space-y-8">
-                {/* Hero / Action Section */}
+                {/* Sección Hero / Acción */}
                 <div className="relative overflow-hidden bg-zinc-900 dark:bg-white text-white dark:text-black p-10 rounded-[2.5rem] shadow-xl text-center space-y-6">
                     <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
                     <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
@@ -70,7 +70,7 @@ export default function IncomesTab({ incomes, salaries, accounts, profileId, cus
                         </div>
                     </div>
 
-                    {/* New Income Wizard Modal */}
+                    {/* Nuevo Modal de Asistente de Ingresos */}
                     {showIncomeWizard && (
                         <IncomeWizard
                             accounts={accounts}

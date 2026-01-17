@@ -20,8 +20,8 @@ export default function LoginPage() {
                 setLoading(false);
             } else {
                 toast.success('¡Bienvenido!');
-                router.refresh(); // Refresh to update middleware/session state
-                // Use window.location as fallback to ensure full reload if needed
+                router.refresh(); // Refrescar para actualizar estado de sesión/middleware
+                // Usar window.location como respaldo para asegurar recarga completa si es necesario
                 window.location.href = '/';
             }
         } catch (err) {
@@ -32,7 +32,7 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 relative overflow-hidden">
-            {/* Background Decorations */}
+            {/* Decoraciones de Fondo */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -90,8 +90,8 @@ export default function LoginPage() {
                     </button>
 
                     <div className="flex flex-col gap-4 mt-8">
-                        {/* Divider removed or kept inside form? Better inside form for spacing, but Link outside? 
-                           Actually, if I move it outside, I need to close the form first.
+                        {/* ¿Divisor eliminado o mantenido dentro del formulario? Mejor dentro para espaciado, ¿pero Link fuera? 
+                           Realmente, si lo muevo fuera, necesito cerrar el formulario primero.
                         */}
                     </div>
 

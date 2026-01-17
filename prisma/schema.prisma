@@ -22,6 +22,7 @@ model AdditionalIncome {
   type           String // "EVENTUAL" o "ONE_TIME"
   frequency      String? // Solo si es EVENTUAL - "WEEKLY", "BIWEEKLY", "MONTHLY"
   durationMonths Int? // Solo si es EVENTUAL
+  icon           String  @default("Wallet") // Identificador de icono
 
   profileId Int
   profile   Profile @relation(fields: [profileId], references: [id])

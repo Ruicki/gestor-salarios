@@ -7,6 +7,7 @@ import { createSalary } from '@/app/actions/salary';
 import { DollarSign, Building2, Wallet, Save } from 'lucide-react';
 import SalaryCalculator from './SalaryCalculator';
 import { toast } from 'sonner';
+import { CategoryIcon, AVAILABLE_ICONS } from '@/components/CategoryIcon';
 
 interface IncomeWizardProps {
     accounts: Account[];
@@ -21,15 +22,16 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
     const [step, setStep] = useState<number>(1);
     const [type, setType] = useState<IncomeType>(null);
 
-    // NEW: Salary Sub-mode
+    // NUEVO: Sub-modo Salario
     const [salaryMode, setSalaryMode] = useState<'MANUAL' | 'CALCULATOR'>('MANUAL');
 
-    // Common State for Inputs
+    // Estado Común para Inputs
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+    const [selectedIcon, setSelectedIcon] = useState('Wallet');
 
-    // Lock Body Scroll
+    // Bloquear desplazamiento del cuerpo
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => {
@@ -41,11 +43,16 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
     const handleTypeSelect = (selectedType: IncomeType) => {
         setType(selectedType);
 
-        // Auto-select CASH account if it exists and type is CASH
+        // Auto-seleccionar cuenta de EFECTIVO si existe y el tipo es CASH
         if (selectedType === 'CASH') {
             const cashAcc = accounts.find(a => a.type === 'CASH');
             if (cashAcc) setSelectedAccountId(cashAcc.id);
         }
+
+        // Establecer Iconos por Defecto
+        if (selectedType === 'SALARY') setSelectedIcon('Building'); // O Maletín
+        if (selectedType === 'DEPOSIT') setSelectedIcon('CreditCard');
+        if (selectedType === 'CASH') setSelectedIcon('Wallet');
 
         setStep(2);
     };
@@ -57,7 +64,7 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
             return;
         }
 
-        // Validation for Description only if NOT Salary Manual (since we default it)
+        // Validación para Descripción solo si NO es Salario Manual (ya que lo ponemos por defecto)
         if (type !== 'SALARY' && !description.trim()) {
             toast.error("Falta descripción");
             return;
@@ -65,9 +72,9 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
 
         try {
             if (type === 'SALARY' && salaryMode === 'MANUAL') {
-                // Save explicitly to SALARY table for consistency
+                // Guardar explícitamente en tabla SALARY para consistencia
                 await createSalary({
-                    grossVal: val, // In manual mode, we assume Net = Gross (no tracked deductions)
+                    grossVal: val, // En modo manual, asumimos Neto = Bruto (sin deducciones rastreadas)
                     netVal: val,
                     bonus: 0,
                     taxes: 0,
@@ -80,13 +87,14 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
                     accountId: selectedAccountId || undefined
                 });
             } else {
-                // Normal Income (Deposit / Cash)
+                // Ingreso Normal (Depósito / Efectivo)
                 await createIncome({
                     name: description,
                     amount: val,
                     type: 'ONE_TIME',
                     profileId,
                     accountId: selectedAccountId || undefined,
+                    icon: selectedIcon
                 });
             }
 
@@ -200,7 +208,7 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
                 )}
 
                 {type === 'SALARY' && salaryMode === 'CALCULATOR' ? (
-                    // EMBEDDED SALARY CALCULATOR
+                    // CALCULADORA DE SALARIO INTEGRADA
                     <div className="animate-in fade-in zoom-in-95 duration-300">
                         <SalaryCalculator
                             profileId={profileId}
@@ -210,7 +218,7 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
                         />
                     </div>
                 ) : (
-                    // MANUAL FORM (Shared by Salary Manual, Deposit, Cash)
+                    // FORMULARIO MANUAL (Compartido por Salario Manual, Depósito, Efectivo)
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                         {type === 'SALARY' && (
                             <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-2xl flex items-start gap-3">
@@ -275,6 +283,25 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* SECCIÓN SELECTOR DE ICONOS */}
+                            <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-3xl p-4">
+                                <label className="block text-xs font-bold text-zinc-500 uppercase mb-3 pl-1">Icono del Ingreso</label>
+                                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                                    {AVAILABLE_ICONS.map(icon => (
+                                        <button
+                                            key={icon}
+                                            onClick={() => setSelectedIcon(icon)}
+                                            className={`w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center transition-all ${selectedIcon === icon
+                                                ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-110'
+                                                : 'bg-white dark:bg-zinc-800 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                                                }`}
+                                        >
+                                            <CategoryIcon iconName={icon} size={20} />
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         </div>

@@ -16,7 +16,7 @@ export default function AccountHistoryModal({ account, onClose, onUpdate }: Acco
     const [transactions, setTransactions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Balance Adjustment State
+    // Estado de Ajuste de Saldo
     const [isAdjusting, setIsAdjusting] = useState(false);
     const [newBalance, setNewBalance] = useState(account.balance.toString());
     const [adjustmentReason, setAdjustmentReason] = useState('');
@@ -52,8 +52,8 @@ export default function AccountHistoryModal({ account, onClose, onUpdate }: Acco
             await adjustAccountBalance(account.id, val, adjustmentReason);
             toast.success("Saldo ajustado correctamente");
             setIsAdjusting(false);
-            onUpdate(); // Update parent dashboard
-            onClose(); // Close modal to reflect changes fully (or reload history/account locally)
+            onUpdate(); // Actualizar panel principal
+            onClose(); // Cerrar modal para reflejar cambios completamente (o recargar historial/cuenta localmente)
         } catch (error) {
             toast.error("Error ajustando saldo");
         }
@@ -75,10 +75,10 @@ export default function AccountHistoryModal({ account, onClose, onUpdate }: Acco
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
 
-                {/* Header */}
+                {/* Encabezado */}
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex justify-between items-start shrink-0">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -126,7 +126,7 @@ export default function AccountHistoryModal({ account, onClose, onUpdate }: Acco
                     </button>
                 </div>
 
-                {/* Body - Transaction List */}
+                {/* Cuerpo - Lista de Transacciones */}
                 <div className="flex-1 overflow-y-auto p-0 bg-zinc-50 dark:bg-black/20">
                     {loading ? (
                         <div className="flex justify-center p-10">
@@ -143,8 +143,8 @@ export default function AccountHistoryModal({ account, onClose, onUpdate }: Acco
                                 <div key={`${tx.type}-${tx.id}-${idx}`} className="flex items-center justify-between p-4 hover:bg-white dark:hover:bg-zinc-800 transition-colors">
                                     <div className="flex items-center gap-4">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${tx.type === 'INCOME' || tx.type === 'SALARY' || tx.type === 'TRANSFER_IN'
-                                                ? 'bg-emerald-100 dark:bg-emerald-900/20'
-                                                : 'bg-red-100 dark:bg-red-900/20'
+                                            ? 'bg-emerald-100 dark:bg-emerald-900/20'
+                                            : 'bg-red-100 dark:bg-red-900/20'
                                             }`}>
                                             {getIcon(tx.type)}
                                         </div>
@@ -162,8 +162,8 @@ export default function AccountHistoryModal({ account, onClose, onUpdate }: Acco
                                         </div>
                                     </div>
                                     <span className={`font-bold tabular-nums ${tx.type === 'INCOME' || tx.type === 'SALARY' || tx.type === 'TRANSFER_IN'
-                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                            : 'text-red-600 dark:text-red-400'
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : 'text-red-600 dark:text-red-400'
                                         }`}>
                                         {tx.type === 'INCOME' || tx.type === 'SALARY' || tx.type === 'TRANSFER_IN' ? '+' : '-'}${tx.amount.toFixed(2)}
                                     </span>

@@ -45,29 +45,29 @@ export async function payLoan(loanId: number, amount: number, sourceAccountId: n
     if (account.balance < amount) throw new Error("Fondos insuficientes");
 
     await prisma.$transaction(async (tx) => {
-        // 1. Deduct from Source Account
+        // 1. Deducir de la cuenta de origen
         await tx.account.update({
             where: { id: sourceAccountId },
             data: { balance: { decrement: amount } }
         });
 
-        // 2. Reduce Loan Balance
-        // We fetch first to check if it's already 0? Not strictly necessary but good for validation.
-        // For now, straightforward update.
+        // 2. Reducir el saldo del préstamo
+        // ¿Buscar primero para ver si ya es 0? No es estrictamente necesario pero es bueno para validación.
+        // Por ahora, actualización directa.
         const loan = await tx.loan.update({
             where: { id: loanId },
             data: { currentBalance: { decrement: amount } }
         });
 
-        // 3. Record Expense (Optimization: Check if 'Deudas' category exists? Or just use a generic name)
-        // We'll just create the expense without tying to a specific category ID if we don't have it handy, 
-        // or we rely on the component to pass it? 
-        // Let's create a "Pago Deuda" expense.
+        // 3. Registrar Gasto (Optimización: ¿Verificar si existe la categoría 'Deudas'? O usar nombre genérico)
+        // Crearemos el gasto sin vincularlo a un ID de categoría específico si no lo tenemos a mano,
+        // ¿o confiamos en que el componente lo pase?
+        // Vamos a crear un gasto "Pago Deuda".
         await tx.expense.create({
             data: {
                 name: `Pago Préstamo: ${loan.name}`,
                 amount: amount,
-                category: "Deudas", // Legacy String field
+                category: "Deudas", // Campo de cadena heredado
                 isRecurring: false,
                 isOneTime: true,
                 paymentMethod: "TRANSFER",

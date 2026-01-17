@@ -15,7 +15,7 @@ interface ProfileManagerProps {
 }
 
 export default function ProfileManager({ profiles: initialProfiles, currentProfileId, onUpdate, onClose, onImpersonate }: ProfileManagerProps) {
-    // START: Fetching Logic
+    // INICIO: Lógica de Obtención
     const [profiles, setProfiles] = useState<any[]>(initialProfiles);
     const [loading, setLoading] = useState(true);
     const [newProfileName, setNewProfileName] = useState('');
@@ -36,14 +36,14 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
     useEffect(() => {
         fetchProfiles();
     }, []);
-    // END: Fetching Logic
+    // FIN: Lógica de Obtención
 
     async function handleCreate() {
         if (!newProfileName.trim()) return;
 
         try {
             await createProfile(newProfileName);
-            await fetchProfiles(); // Refresh local list
+            await fetchProfiles(); // Actualizar lista local
             setNewProfileName('');
             toast.success("Perfil creado exitosamente");
         } catch (error) {
@@ -60,7 +60,7 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
         confirmDelete(async () => {
             try {
                 await deleteProfile(id);
-                await fetchProfiles(); // Refresh local list
+                await fetchProfiles(); // Actualizar lista local
                 toast.success("Perfil y todos sus datos eliminados");
             } catch (error) {
                 toast.error("Error eliminando perfil");
@@ -69,10 +69,10 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
     }
 
     async function handlePasswordReset(id: number, name: string) {
-        // Simple prompt for password reset
+        // Prompt simple para restablecer contraseña
         const newPass = window.prompt(`Ingresa la nueva contraseña para ${name}:`, "1234");
 
-        if (newPass === null) return; // User cancelled
+        if (newPass === null) return; // Usuario canceló
 
         if (newPass.trim().length < 4) {
             toast.error("La contraseña debe tener al menos 4 caracteres");
@@ -88,14 +88,14 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
         });
     }
 
-    // Ensure IDs are compared as primitive numbers to avoid type mismatch
+    // Asegurar que los IDs se comparen como números primitivos para evitar discrepancias de tipo
     const currentIdNum = Number(currentProfileId);
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
 
-                {/* HEADER */}
+                {/* ENCABEZADO */}
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0 backdrop-blur-sm">
                     <div className="flex items-center gap-4">
                         <div>
@@ -168,15 +168,15 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
                                 <div
                                     key={profile.id}
                                     className={`relative p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group hover:shadow-lg ${Number(profile.id) === currentIdNum
-                                            ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-500/30'
-                                            : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+                                        ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-500/30'
+                                        : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
                                         }`}
                                 >
                                     {/* Info Usuario */}
                                     <div className="flex items-center gap-4">
                                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black shadow-inner ${profile.role === 'ADMIN'
-                                                ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white'
-                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                                            ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white'
+                                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
                                             }`}>
                                             {profile.name.charAt(0).toUpperCase()}
                                         </div>
@@ -206,10 +206,10 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
                                     {Number(profile.id) !== currentIdNum && (
                                         <div className="flex items-center gap-2">
 
-                                            {/* IMPERSONATE: FORCE SHOW */}
+                                            {/* IMPERSONAR: FORZAR MOSTRAR */}
                                             <button
                                                 onClick={() => {
-                                                    // Direct call or safe fall back warning
+                                                    // Llamada directa o advertencia de fallback seguro
                                                     if (onImpersonate) {
                                                         onImpersonate(profile);
                                                     } else {
@@ -223,7 +223,7 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
                                                 <span>Ver Como</span>
                                             </button>
 
-                                            {/* RESET PASSWORD */}
+                                            {/* RESTABLECER CONTRASEÑA */}
                                             {profile.email && (
                                                 <button
                                                     onClick={() => handlePasswordReset(profile.id, profile.name)}

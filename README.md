@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gestor de Salarios y Finanzas Personales
 
-## Getting Started
+Una aplicación web moderna para tomar el control de tus finanzas. Gestiona salarios, ingresos adicionales, gastos, tarjetas de crédito, deudas y metas de ahorro en una interfaz intuitiva y elegante.
 
-First, run the development server:
+## Características Principales
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Gestión de Ingresos:** Registra múltiples salarios y fuentes de ingresos adicionales.
+- **Control de Gastos:** Categorización detallada con iconos personalizados.
+- **Tarjetas de Crédito:** Seguimiento de saldos, límites y fechas de corte. Protege tu historial de crédito.
+- **Deudas y Préstamos:** Visualiza tus obligaciones y monitorea el progreso de pago.
+- **Metas de Ahorro:** Establece objetivos financieros y realiza un seguimiento automático.
+- **Análisis (Insights):** Gráficos y resúmenes para entender a dónde va tu dinero.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tecnologías
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework:** [Next.js](https://nextjs.org) (App Router)
+- **Lenguaje:** TypeScript
+- **Base de Datos:** SQLite / PostgreSQL (vía Prisma ORM)
+- **Estilos:** Tailwind CSS
+- **Iconos:** Lucide React
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Cómo Iniciar
 
-## Learn More
+1.  **Instalar dependencias:**
+    ```bash
+    npm install
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+2.  **Configurar Base de Datos:**
+    Asegúrate de tener tu archivo `.env` configurado. Luego ejecuta:
+    ```bash
+    npx prisma generate
+    npx prisma db push
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3.  **Iniciar Servidor de Desarrollo:**
+    ```bash
+    npm run dev
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+    Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-## Deploy on Vercel
+## Despliegue
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Este proyecto está optimizado para ser desplegado en [Vercel](https://vercel.com). Consulta la [documentación de Next.js](https://nextjs.org/docs/deployment) para más detalles.

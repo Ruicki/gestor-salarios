@@ -122,7 +122,7 @@ export async function updateProfile(profileId: number, formData: FormData) {
         const data: any = {};
         if (name) data.name = name;
         if (email) {
-            // Check uniqueness if email changes
+            // Verificar unicidad si el correo cambia
             const existing = await prisma.profile.findUnique({ where: { email } });
             if (existing && existing.id !== profileId) return { error: 'Este correo ya está en uso' };
             data.email = email;
@@ -145,7 +145,7 @@ export async function updateProfile(profileId: number, formData: FormData) {
 
 export async function generateAccessCode(profileId: number) {
     try {
-        // Simple 6-char code
+        // Código simple de 6 caracteres
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
         await prisma.profile.update({
@@ -153,7 +153,7 @@ export async function generateAccessCode(profileId: number) {
             data: { accessCode: code }
         });
 
-        revalidatePath('/budget'); // Refresh UI to show code if needed or just return it
+        revalidatePath('/budget'); // Refrescar UI para mostrar el código si es necesario o simplemente devolverlo
         return { success: true, code };
     } catch (error) {
         console.error("Generate Access Code Error:", error);
@@ -173,7 +173,7 @@ export async function claimProfile(formData: FormData) {
     const code = rawCode.trim().toUpperCase();
 
     try {
-        // verify code
+        // verificar código
         const profile = await prisma.profile.findUnique({
             where: { accessCode: code }
         });
@@ -182,7 +182,7 @@ export async function claimProfile(formData: FormData) {
             return { error: 'Código inválido o expirado' };
         }
 
-        // verify email uniqueness (unless it's the same profile, which is unlikely as it has no email yet usually)
+        // verificar unicidad del correo (a menos que sea el mismo perfil)
         const existingEmail = await prisma.profile.findUnique({ where: { email } });
         if (existingEmail && existingEmail.id !== profile.id) {
             return { error: 'Este correo ya está en uso por otro usuario.' };
@@ -195,11 +195,11 @@ export async function claimProfile(formData: FormData) {
             data: {
                 email,
                 password: hashedPassword,
-                accessCode: null // Consume the code
+                accessCode: null // Consumir el código
             }
         });
 
-        // Auto login
+        // Inicio de sesión automático
         const cookieStore = await cookies();
         cookieStore.set(SESSION_COOKIE, profile.id.toString(), {
             httpOnly: true,

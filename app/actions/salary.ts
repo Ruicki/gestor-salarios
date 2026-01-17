@@ -24,7 +24,7 @@ interface CreateSalaryInput {
     company?: string;
     absentDays: number;
     profileId?: number;
-    accountId?: number; // New field
+    accountId?: number; // Nuevo campo
 }
 
 // 5. La función principal
@@ -68,7 +68,7 @@ export async function createSalary(data: CreateSalaryInput): Promise<Salary> {
     return newSalary;
 }
 
-// ... existing getSalaries ...
+// ... getSalaries existente ...
 
 // 8. NUEVA FUNCIÓN: Eliminar Salario
 // Borra un registro por su ID

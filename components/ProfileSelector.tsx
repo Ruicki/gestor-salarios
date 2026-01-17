@@ -20,7 +20,7 @@ export default function ProfileSelector({ profiles, onSelect, onManage }: Profil
                 {profiles.map((profile) => (
                     <div key={profile.id} className="group flex flex-col items-center gap-4 cursor-pointer" onClick={() => onSelect(profile.id)}>
                         <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-zinc-800 border-2 border-transparent group-hover:border-white group-hover:scale-105 transition-all duration-300 flex items-center justify-center relative overflow-hidden shadow-2xl">
-                            {/* Gradient Background based on ID to act as "Avatar" */}
+                            {/* Fondo degradado basado en ID para actuar como "Avatar" */}
                             <div className={`absolute inset-0 opacity-50 bg-linear-to-br ${getGradient(profile.id)}`}></div>
                             <span className="text-5xl font-bold text-white relative z-10 select-none">
                                 {profile.name.charAt(0).toUpperCase()}
@@ -29,7 +29,7 @@ export default function ProfileSelector({ profiles, onSelect, onManage }: Profil
                         <span className="text-zinc-400 text-xl font-medium group-hover:text-white transition-colors">
                             {profile.name}
                         </span>
-                        {/* Admin Badge */}
+                        {/* Insignia de Admin */}
                         {profile.role === 'ADMIN' && (
                             <span className="bg-amber-500/20 text-amber-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/50 mt-1">
                                 ADMIN
@@ -39,7 +39,7 @@ export default function ProfileSelector({ profiles, onSelect, onManage }: Profil
                 ))}
             </div>
 
-            {/* Admin Badge/Info */}
+            {/* Insignia/Info de Admin */}
             <div className="absolute bottom-10 text-zinc-600 font-medium">
                 Gestor de Salarios v2.0
             </div>
@@ -47,7 +47,7 @@ export default function ProfileSelector({ profiles, onSelect, onManage }: Profil
     );
 }
 
-// Helper to generate deterministic cool gradients based on ID
+// Helper para generar degradados geniales deterministas basados en ID
 function getGradient(id: number) {
     const gradients = [
         "from-blue-600 to-cyan-400",

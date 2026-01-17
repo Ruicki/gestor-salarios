@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 
 import { confirmDelete } from "@/components/DeleteConfirmation";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 // ...
 
@@ -50,13 +51,13 @@ export default function IncomeHistory({ salaries, incomes, onDataChange }: Incom
         });
     };
 
-    // MERGE AND SORT LISTS
+    // FUSIONAR Y ORDENAR LISTAS
     const allItems: HistoryItem[] = [
         ...salaries.map(s => ({ ...s, type: 'SALARY' as const })),
         ...incomes.map(i => ({ ...i, type: 'INCOME' as const }))
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    // Logic for Pagination
+    // Lógica de Paginación
     const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
     const currentItems = allItems.slice(
         (currentPage - 1) * ITEMS_PER_PAGE,
@@ -79,7 +80,7 @@ export default function IncomeHistory({ salaries, incomes, onDataChange }: Incom
                     <div key={`${item.type}-${item.id}`} className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 bg-white dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/30 transition-all group gap-4 md:gap-0 shadow-sm dark:shadow-none animate-in fade-in slide-in-from-bottom-2">
                         <div className="flex items-center gap-4 w-full md:w-auto">
                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold shrink-0 ${item.type === 'SALARY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
-                                {item.type === 'SALARY' ? '💼' : '💰'}
+                                <CategoryIcon iconName={item.type === 'SALARY' ? 'Building' : (item as any).icon || 'Wallet'} size={24} />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="font-bold text-zinc-800 dark:text-zinc-200 text-lg truncate">

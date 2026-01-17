@@ -18,7 +18,7 @@ export default function UserSettings({ profile, onClose, onUpdate }: UserSetting
     async function handleSubmit(formData: FormData) {
         setLoading(true);
 
-        // Validation check for empty password fields to avoid hashing empty string if not intended
+        // Verificación de validación para campos de contraseña vacíos para evitar hashear cadenas vacías si no es intencional
         const password = formData.get('password') as string;
         if (password && password.length < 4) {
             toast.error("La contraseña debe tener al menos 4 caracteres");
@@ -87,6 +87,33 @@ export default function UserSettings({ profile, onClose, onUpdate }: UserSetting
                             placeholder="Dejar en blanco para mantener actual"
                             className="w-full bg-orange-50/50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 font-bold transition-all placeholder:font-normal placeholder:text-zinc-400"
                         />
+                    </div>
+
+                    {/* ZONA DE PELIGRO */}
+                    <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                        <h4 className="text-xs font-black text-red-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            Zona de Peligro
+                        </h4>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                if (confirm("¿ESTÁS SEGURO? Esto borrará TODOS tus gastos, ingresos, metas y cuentas (excepto Efectivo). Esta acción NO se puede deshacer.")) {
+                                    if (confirm("¿De verdad? Se perderán todos los datos permanentemente.")) {
+                                        setLoading(true);
+                                        const { resetProfileData } = await import('@/app/actions/budget');
+                                        await resetProfileData(profile.id);
+                                        toast.success("Cuenta reseteada correctamente");
+                                        onUpdate();
+                                        onClose();
+                                        setLoading(false);
+                                    }
+                                }
+                            }}
+                            className="w-full bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 font-bold py-3 rounded-xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            Resetear Todos los Datos
+                        </button>
                     </div>
 
                     <button

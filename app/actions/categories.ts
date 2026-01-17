@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Category } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-// Default Categories Config
+// Configuración de Categorías Predeterminadas
 const DEFAULT_CATEGORIES = [
     { name: 'Vivienda', icon: 'Home', color: 'text-blue-500', type: 'FIXED' },
     { name: 'Comida', icon: 'ShoppingBag', color: 'text-orange-500', type: 'VARIABLE' },
@@ -18,11 +18,11 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export async function initializeDefaultCategories(profileId: number) {
-    // Check if user already has categories
+    // Verificar si el usuario ya tiene categorías
     const count = await prisma.category.count({ where: { profileId } });
     if (count > 0) return;
 
-    // Bulk create defaults using transaction for SQLite compatibility
+    // Crear por lotes usando transacción para compatibilidad
     await prisma.$transaction(
         DEFAULT_CATEGORIES.map(cat =>
             prisma.category.create({
@@ -43,7 +43,7 @@ export async function getCategories(profileId: number): Promise<Category[]> {
         orderBy: { name: 'asc' }
     });
 
-    // Fallback: If no categories exist (maybe new feature rollout), init them now
+    // Fallback: Si no existen categorías (posible nueva funcionalidad), inicializar ahora
     if (categories.length === 0) {
         await initializeDefaultCategories(profileId);
         categories = await prisma.category.findMany({
@@ -69,12 +69,26 @@ export async function createCategory(profileId: number, name: string, icon: stri
     return category;
 }
 
-export async function deleteCategory(id: number) {
-    // Optional: Check if used? Or simply set expenses to null category?
-    // For now, let's keep it simple. If we delete a category, expenses lose the link.
-    // Ideally we should warn user.
+export async function updateCategory(id: number, name: string, icon: string, color: string, type: string) {
+    const category = await prisma.category.update({
+        where: { id },
+        data: {
+            name,
+            icon,
+            color,
+            type
+        }
+    });
+    revalidatePath('/budget');
+    return category;
+}
 
-    // Unlink expenses first
+export async function deleteCategory(id: number) {
+    // Opcional: ¿Verificar si se usa? ¿O simplemente poner categoría null en gastos?
+    // Por ahora, mantengámoslo simple. Si borramos una categoría, los gastos pierden el enlace.
+    // Idealmente deberíamos advertir al usuario.
+
+    // Desvincular gastos primero
     await prisma.expense.updateMany({
         where: { categoryId: id },
         data: { categoryId: null }

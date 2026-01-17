@@ -47,7 +47,7 @@ export default function TransferModal({ accounts, onClose, onSuccess }: Transfer
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200 backdrop-blur-sm">
             <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col">
 
-                {/* Header */}
+                {/* Encabezado */}
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full">
@@ -62,7 +62,7 @@ export default function TransferModal({ accounts, onClose, onSuccess }: Transfer
 
                 <div className="p-6 space-y-6">
 
-                    {/* Source Account */}
+                    {/* Cuenta Origen */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider ml-1">Desde (Origen)</label>
                         <div className="relative">
@@ -82,14 +82,14 @@ export default function TransferModal({ accounts, onClose, onSuccess }: Transfer
                         </div>
                     </div>
 
-                    {/* Arrow Divider */}
+                    {/* Divisor de Flecha */}
                     <div className="flex justify-center -my-2 relative z-10">
                         <div className="bg-white dark:bg-zinc-900 p-2 rounded-full border border-zinc-100 dark:border-zinc-800 shadow-sm">
                             <ArrowDown className="w-5 h-5 text-zinc-400" />
                         </div>
                     </div>
 
-                    {/* Destination Account */}
+                    {/* Cuenta Destino */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider ml-1">Para (Destino)</label>
                         <div className="relative">
@@ -110,7 +110,7 @@ export default function TransferModal({ accounts, onClose, onSuccess }: Transfer
                         </div>
                     </div>
 
-                    {/* Amount Input */}
+                    {/* Entrada de Monto */}
                     <div className="pt-2">
                         <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider ml-1">Monto a Transferir</label>
                         <div className="relative mt-2">
@@ -132,7 +132,7 @@ export default function TransferModal({ accounts, onClose, onSuccess }: Transfer
 
                 </div>
 
-                {/* Footer */}
+                {/* Pie de página */}
                 <div className="p-6 pt-2">
                     <button
                         onClick={handleTransfer}

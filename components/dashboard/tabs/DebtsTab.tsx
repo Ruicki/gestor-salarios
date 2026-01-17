@@ -20,12 +20,12 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [wizardType, setWizardType] = useState<'CARD' | 'LOAN'>('CARD');
 
-    // Payment Modal
+    // Modal de Pago
     const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; type: 'CARD' | 'LOAN'; id: number; name: string; maxAmount: number } | null>(null);
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentAccountId, setPaymentAccountId] = useState('');
 
-    // Wizard Form State
+    // Estado del Formulario del Asistente
     const [loanForm, setLoanForm] = useState<CreateLoanInput>({
         name: '', lender: '', type: 'PERSONAL', totalAmount: 0, currentBalance: 0,
         interestRate: 0, termMonths: 12, monthlyPayment: 0, paymentDay: 15, isAutomatic: false, profileId
@@ -35,7 +35,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
     });
     const [submitting, setSubmitting] = useState(false);
 
-    // --- HANDLERS: CREATE ---
+    // --- MANEJADORES: CREAR ---
     async function handleCreate() {
         if (!profileId) return;
         setSubmitting(true);
@@ -57,15 +57,15 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                 if (!loanForm.name || !loanForm.totalAmount) { toast.error("Nombre y Monto requeridos"); return; }
                 await createLoan({
                     ...loanForm,
-                    totalAmount: parseFloat(loanForm.totalAmount.toString()), // Ensure number
-                    currentBalance: parseFloat(loanForm.totalAmount.toString()), // Initial balance = total
+                    totalAmount: parseFloat(loanForm.totalAmount.toString()), // Asegurar número
+                    currentBalance: parseFloat(loanForm.totalAmount.toString()), // Saldo inicial = total
                     profileId
                 });
             }
             onUpdate();
             setIsWizardOpen(false);
             toast.success(wizardType === 'CARD' ? "Tarjeta creada" : "Préstamo registrado");
-            // Reset forms... (omitted for brevity, ideally reset)
+            // Resetear formularios... (omitido por brevedad, idealmente resetear)
         } catch (error) {
             toast.error("Error creando registro");
             console.error(error);
@@ -74,7 +74,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
         }
     }
 
-    // --- HANDLERS: DELETE ---
+    // --- MANEJADORES: ELIMINAR ---
     async function handleDelete(id: number, type: 'CARD' | 'LOAN') {
         confirmDelete(async () => {
             try {
@@ -86,7 +86,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
         });
     }
 
-    // --- HANDLERS: PAY ---
+    // --- MANEJADORES: PAGAR ---
     async function handlePay() {
         if (!paymentModal || !paymentAmount || !paymentAccountId) {
             toast.warning("Completa los campos de pago");
@@ -95,8 +95,8 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
         setSubmitting(true);
         try {
             const amount = parseFloat(paymentAmount);
-            if (amount > paymentModal.maxAmount + 1) { // Small buffer for rounding
-                // Optional warning, but let's allow paying full debt
+            if (amount > paymentModal.maxAmount + 1) { // Pequeño margen para redondeo
+                // Advertencia opcional, pero permitamos pagar la deuda completa
             }
 
             if (paymentModal.type === 'CARD') {
@@ -115,41 +115,47 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
         }
     }
 
-    // --- UI HELPERS ---
+    // --- LÓGICA DE PRÉSTAMOS ---
     const totalDebt = loans.reduce((acc, l) => acc + l.currentBalance, 0) + creditCards.reduce((acc, c) => acc + c.balance, 0);
 
-    // --- STRATEGY ENGINE ---
+    // --- MOTOR DE ESTRATEGIA ---
     const [strategy, setStrategy] = useState<'SNOWBALL' | 'AVALANCHE'>('SNOWBALL');
 
-    // Filter active debts
-    const activeLoans = loans.filter(l => l.currentBalance > 0);
-    const activeCards = creditCards.filter(c => c.balance > 0);
+    // Filtrar deudas activas - MODIFICADO: Mostrar todos los préstamos sin importar saldo
+    const activeLoans = loans;
+    // Mostrar TODAS las tarjetas, incluso si tienen saldo 0 (para ver disponibles)
+    const activeCards = creditCards;
 
-    // Sorting Logic
+    // Lógica de Ordenamiento
     const sortedLoans = [...activeLoans].sort((a, b) => {
         if (strategy === 'SNOWBALL') return a.currentBalance - b.currentBalance; // Menor saldo primero
         return (b.interestRate || 0) - (a.interestRate || 0); // Mayor interés primero
     });
 
     const sortedCards = [...activeCards].sort((a, b) => {
+        // Si el saldo es 0, las ponemos al final o principio?
+        // Snowball: Menor saldo primero. 0 es menor que 100.
+        // Así que aparecerán primero como "Pagadas" o "Sin Deuda".
         if (strategy === 'SNOWBALL') return a.balance - b.balance;
         return (b.interestRate || 0) - (a.interestRate || 0);
     });
 
-    // Determine absolute top priority across both types
-    // We create a temporary unified list just to find the top 1
+    // Determinar prioridad absoluta superior entre ambos tipos
+    // Creamos una lista unificada temporal solo para encontrar el top 1
+    // IMPORTANTE: Para la prioridad "Top 1", SI debemos ignorar las de saldo 0 para no sugerir pagar una deuda de 0.
     const allDebts = [
-        ...activeLoans.map(l => ({ id: l.id, type: 'LOAN', val: strategy === 'SNOWBALL' ? l.currentBalance : (l.interestRate || 0) })),
-        ...activeCards.map(c => ({ id: c.id, type: 'CARD', val: strategy === 'SNOWBALL' ? c.balance : (c.interestRate || 0) }))
+        ...activeLoans.filter(l => l.currentBalance > 0).map(l => ({ id: l.id, type: 'LOAN', val: strategy === 'SNOWBALL' ? l.currentBalance : (l.interestRate || 0) })),
+        // Filtrar tarjetas con saldo cero SOLO para cálculo de prioridad
+        ...activeCards.filter(c => c.balance > 0).map(c => ({ id: c.id, type: 'CARD', val: strategy === 'SNOWBALL' ? c.balance : (c.interestRate || 0) }))
     ];
 
-    // Snowball: Min value wins. Avalanche: Max value wins.
+    // Bola de Nieve: Valor mínimo gana. Avalancha: Valor máximo gana.
     const topPriority = allDebts.sort((a, b) => strategy === 'SNOWBALL' ? a.val - b.val : b.val - a.val)[0];
 
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* HEADER & KPI */}
+            {/* ENCABEZADO Y KPI */}
             <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-6">
                 <div>
                     <h2 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
@@ -158,7 +164,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                     <p className="text-zinc-500 font-medium">Visualiza y aniquila tus deudas.</p>
                 </div>
 
-                {/* STRATEGY TOGGLE */}
+                {/* INTERRUPTOR DE ESTRATEGIA */}
                 <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-xl">
                     <button
                         onClick={() => setStrategy('SNOWBALL')}
@@ -180,7 +186,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                 </div>
             </div>
 
-            {/* STRATEGY EXPLAINER */}
+            {/* EXPLICACIÓN DE ESTRATEGIA */}
             <div className={`p-4 rounded-2xl border mb-8 flex items-start gap-3 ${strategy === 'SNOWBALL' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 text-blue-800 dark:text-blue-200' : 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800 text-orange-800 dark:text-orange-200'}`}>
                 <div className="text-2xl">{strategy === 'SNOWBALL' ? '❄️' : '🏔️'}</div>
                 <div>
@@ -194,7 +200,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* --- LOANS SECTION --- */}
+                {/* --- SECCIÓN DE PRÉSTAMOS --- */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
@@ -248,7 +254,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                                             </div>
                                         </div>
 
-                                        {/* Progress Bar (Inverse goal logic: 100% pagado = empty balance) */}
+                                        {/* Barra de Progreso (Lógica inversa de meta: 100% pagado = saldo vacío) */}
                                         <div className="h-3 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-4">
                                             <div className="h-full bg-linear-to-r from-purple-500 to-indigo-500" style={{ width: `${progress}%` }}></div>
                                         </div>
@@ -268,7 +274,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                     )}
                 </div>
 
-                {/* --- CREDIT CARDS SECTION --- */}
+                {/* --- LÓGICA DE TARJETAS DE CRÉDITO --- */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
@@ -302,7 +308,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                                                 objetivo prioritario
                                             </div>
                                         )}
-                                        {/* Card Design Elements */}
+                                        {/* Elementos de Diseño de Tarjeta */}
                                         <div className="absolute top-0 right-0 p-8 opacity-10">
                                             <CardIcon className="w-32 h-32" />
                                         </div>
@@ -321,7 +327,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                                             <div>
                                                 <p className="text-[10px] uppercase text-zinc-400">Deuda Actual</p>
                                                 <p className="text-2xl font-mono text-pink-400">${card.balance.toLocaleString()}</p>
-                                                {/* Risk Badge */}
+                                                {/* Insignia de Riesgo */}
                                                 {utilization > 30 && (
                                                     <div className={`mt-1 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase ${utilization > 80 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                                                         {utilization > 80 ? '⚠️ Crítico' : '⚠️ Atención'}
@@ -346,7 +352,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                                                     const today = new Date();
                                                     const currentDay = today.getDate();
 
-                                                    // Logic for Cutoff Status
+                                                    // Lógica para Estado de Corte
                                                     let cutoffStatus = { text: '', color: '' };
                                                     const daysToCutoff = card.cutoffDay - currentDay;
 
@@ -358,10 +364,10 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                                                         cutoffStatus = { text: 'Corte Pasado', color: 'bg-zinc-700 text-zinc-400' };
                                                     }
 
-                                                    // Logic for Interest Projection (NEW)
+                                                    // Lógica para Proyección de Intereses (NUEVO)
                                                     let interestProjection = null;
                                                     if (card.balance > 0 && card.interestRate) {
-                                                        // Simple Interest Est: Balance * (APR/100) / 12
+                                                        // Est. Interés Simple: Saldo * (Tasa/100) / 12
                                                         const estimatedInterest = (card.balance * (card.interestRate / 100)) / 12;
                                                         if (estimatedInterest > 0) {
                                                             interestProjection = (
@@ -386,7 +392,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                                             </div>
                                         </div>
 
-                                        {/* Usage Bar */}
+                                        {/* Barra de Uso */}
                                         <div className="absolute bottom-0 left-0 w-full h-1 bg-zinc-700">
                                             <div className={`h-full ${utilization > 80 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${utilization}%` }}></div>
                                         </div>
@@ -398,7 +404,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                 </div>
             </div>
 
-            {/* --- WIZARD MODAL --- */}
+            {/* --- MODAL DEL ASISTENTE --- */}
             {isWizardOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
                     <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95">
@@ -407,7 +413,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                             <button onClick={() => setIsWizardOpen(false)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full"><X size={20} /></button>
                         </div>
 
-                        {/* Type Selector */}
+                        {/* Selector de Tipo */}
                         <div className="grid grid-cols-2 gap-4 mb-8 bg-zinc-100 dark:bg-zinc-800 p-2 rounded-2xl">
                             <button
                                 onClick={() => setWizardType('CARD')}
@@ -440,7 +446,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                                             <input type="number" placeholder="Ej: 15" value={cardForm.cutoffDay} onChange={e => setCardForm({ ...cardForm, cutoffDay: e.target.value })} className="w-full p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl outline-none font-bold" />
                                         </div>
                                     </div>
-                                    {/* Advanced fields collapsed or simplified */}
+                                    {/* Campos avanzados contraídos o simplificados */}
                                 </>
                             ) : (
                                 <>
@@ -485,7 +491,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                 </div>
             )}
 
-            {/* --- PAYMENT MODAL --- */}
+            {/* --- ESTADOS DE PAGO --- */}
             {paymentModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
                     <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95">

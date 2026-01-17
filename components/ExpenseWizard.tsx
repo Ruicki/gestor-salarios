@@ -14,6 +14,7 @@ import {
     X,
     HelpCircle
 } from 'lucide-react';
+import { CategoryIcon } from '@/components/CategoryIcon';
 
 interface ExpenseWizardProps {
     accounts: Account[];
@@ -28,7 +29,7 @@ interface ExpenseWizardProps {
 export default function ExpenseWizard({ accounts, creditCards, categories, profileId, onClose, onSuccess, onInit }: ExpenseWizardProps) {
     const [step, setStep] = useState(1);
 
-    // Form State
+    // Estado del Formulario
     const [categoryId, setCategoryId] = useState<number | null>(null);
     const [amount, setAmount] = useState('');
     const [name, setName] = useState('');
@@ -38,11 +39,11 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
     const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
     const [isRecurring, setIsRecurring] = useState(false);
 
-    // Initial Fetch (If categories valid but empty list locally)
+    // Carga Inicial (Si las categorías son válidas pero la lista local está vacía)
     useEffect(() => {
         if (categories.length === 0) {
-            // In a real app we might fetch here, but BudgetDashboard handles it.
-            // Just a safety check or we can call initialization logic.
+            // En una aplicación real podríamos hacer fetch aquí, pero BudgetDashboard lo maneja.
+            // Es solo una verificación de seguridad o podemos llamar a la lógica de inicialización.
             getCategories(profileId).then((cats) => {
                 // Si recuperamos categorías (se hizo seeding), notificamos al padre para que recargue el perfil
                 if (cats.length > 0 && onInit) {
@@ -52,7 +53,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
         }
     }, [categories.length, profileId, onInit]);
 
-    // Lock Body Scroll
+    // Bloquear desplazamiento del cuerpo
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => {
@@ -60,7 +61,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
         };
     }, []);
 
-    // Handlers
+    // Manejadores
     const handleCategorySelect = (catId: number) => {
         setCategoryId(catId);
         setStep(2);
@@ -98,7 +99,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
             }
         }
 
-        // Find category name for backward compatibility
+        // Buscar nombre de categoría para compatibilidad con versiones anteriores
         const selectedCat = categories.find(c => c.id === categoryId);
 
         try {
@@ -106,7 +107,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
                 name,
                 amount: val,
                 category: selectedCat?.name || "Gasto", // Legacy field
-                // NEW FIELD
+                // NUEVO CAMPO
                 categoryId: categoryId,
                 profileId,
                 dueDate: isRecurring ? new Date(date).getDate() : undefined,
@@ -125,14 +126,9 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
         }
     };
 
-    // Helper to get Icon Component
-    const getIcon = (iconName: string) => {
-        // @ts-ignore
-        const Icon = LucideIcons[iconName];
-        return Icon ? <Icon className="w-6 h-6" /> : <HelpCircle className="w-6 h-6" />;
-    };
+    // Helper eliminado, usando componente CategoryIcon directamente
 
-    // Render Steps
+    // Pasos de Renderizado
     const renderStep1_Categories = () => (
         <div className="space-y-6">
             <h2 className="text-2xl font-black text-center mb-2 text-zinc-900 dark:text-white">¿Qué estás pagando?</h2>
@@ -145,14 +141,14 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
                         className={`p-4 rounded-3xl border-2 border-zinc-100 dark:border-zinc-800 hover:border-purple-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all group flex flex-col items-center gap-3`}
                     >
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-zinc-100 dark:bg-zinc-800 ${cat.color} bg-opacity-10`}>
-                            {getIcon(cat.icon)}
+                            <CategoryIcon iconName={cat.icon} size={24} />
                         </div>
                         <span className="font-bold text-sm text-zinc-700 dark:text-zinc-300">{cat.name}</span>
                     </button>
                 ))}
             </div>
 
-            {/* Fallback if no categories */}
+            {/* Fallback si no hay categorías */}
             {categories.length === 0 && (
                 <div className="text-center text-zinc-500 py-10">
                     <p>Cargando categorías...</p>
@@ -176,7 +172,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
                         if (!cat) return null;
                         return (
                             <>
-                                <span className={cat.color}>{getIcon(cat.icon)}</span>
+                                <span className={cat.color}><CategoryIcon iconName={cat.icon} size={24} /></span>
                                 <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{cat.name}</span>
                             </>
                         );
@@ -184,7 +180,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
                 </div>
             </div>
 
-            {/* Main Input */}
+            {/* Input Principal */}
             <div className="text-center space-y-4">
                 <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">Monto del Gasto</label>
                 <div className="relative inline-block w-full max-w-[280px]">
@@ -200,7 +196,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
                 </div>
             </div>
 
-            {/* Inputs Grid */}
+            {/* Cuadrícula de Inputs */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-4">
                     <div>
@@ -216,7 +212,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
                 </div>
 
                 <div className="space-y-4">
-                    {/* Payment Method Toggle */}
+                    {/* Selector de Método de Pago */}
                     <div>
                         <label className="block text-xs font-bold text-zinc-500 uppercase mb-2 pl-1">Método de Pago</label>
                         <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl">
@@ -237,7 +233,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
                         </div>
                     </div>
 
-                    {/* Dynamic Account/Card Select */}
+                    {/* Selección Dinámica de Cuenta/Tarjeta */}
                     <div>
                         {paymentMethod === 'CASH' ? (
                             <div className="animate-in fade-in slide-in-from-right-4">

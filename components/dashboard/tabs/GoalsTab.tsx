@@ -6,7 +6,7 @@ import { Goal } from '@prisma/client';
 import { createGoal, deleteGoal, handleGoalTransaction, updateGoal, deleteGoalWithReclaim } from '@/app/actions/budget';
 import { toast } from 'sonner';
 import { confirmDelete } from '@/components/DeleteConfirmation';
-import { Pencil, Trash2, X, PiggyBank, Calculator, Plus, Eye, EyeOff } from 'lucide-react';
+import { Pencil, Trash2, X, PiggyBank, Calculator, Plus, Eye, EyeOff, Calendar } from 'lucide-react';
 
 interface GoalsTabProps {
     goals: Goal[];
@@ -31,12 +31,12 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
 
     const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
 
-    // Transaction States
+    // Estados de Transacción
     const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
     const [transactionAmount, setTransactionAmount] = useState('');
     const [selectedAccountId, setSelectedAccountId] = useState<string>('');
 
-    // --- FORM HANDLERS ---
+    // --- MANEJADORES DE FORMULARIO ---
     function openNewGoalModal() {
         setEditingGoalId(null);
         setForm({
@@ -100,18 +100,18 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
 
 
 
-    // --- SMART CALCULATOR (Helper) ---
+    // --- CALCULADORA INTELIGENTE (Ayudante) ---
     const calculateRecommendedSaving = () => {
         if (!form.targetAmount || !form.deadline) return null;
         const target = parseFloat(form.targetAmount);
         const deadlineDate = new Date(form.deadline);
         const today = new Date();
 
-        // Difference in months
+        // Diferencia en meses
         const diffTime = Math.abs(deadlineDate.getTime() - today.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const weeks = diffDays / 7;
-        const months = diffDays / 30; // Approx
+        const months = diffDays / 30; // Aprox
 
         if (months <= 0) return null;
 
@@ -124,12 +124,12 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
 
     const recommended = calculateRecommendedSaving();
 
-    // --- UI COMPONENTS ---
+    // --- COMPONENTES UI ---
     const GoalCard = ({ goal }: { goal: Goal }) => {
         const [isRevealed, setIsRevealed] = useState(false);
         const percentage = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
 
-        // Priority Badge Color
+        // Color de Insignia de Prioridad
         const priorityColors = {
             'HIGH': 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
             'MEDIUM': 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -165,14 +165,14 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                     </div>
                 </div>
 
-                {/* ACTIONS */}
+                {/* ACCIONES */}
                 <div className="flex gap-1">
                     <button onClick={() => openEditGoalModal(goal)} className="p-2 text-zinc-400 hover:text-blue-500 transition-colors"><Pencil size={18} /></button>
                     <button onClick={() => handleSmartDelete(goal)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
                 </div>
 
 
-                {/* MAIN AMOUNT - PIGGY BANK LOGIC */}
+                {/* MONTO PRINCIPAL - LÓGICA DE ALCANCÍA */}
                 <div className="flex items-end gap-3 mb-6 cursor-pointer group/piggy" onClick={() => setIsRevealed(!isRevealed)}>
                     <div className={`p-3 rounded-2xl transition-all duration-500 ${isRevealed ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-pink-100 text-pink-500 dark:bg-pink-500/20 dark:text-pink-400 rotate-0 group-hover/piggy:rotate-12'}`}>
                         <PiggyBank size={32} />
@@ -191,7 +191,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                     </div>
                 </div>
 
-                {/* PROGRESS */}
+                {/* PROGRESO */}
                 <div className="mb-6">
                     <div className="flex justify-between text-xs font-bold mb-2">
                         {percentage >= 100 ? (
@@ -209,7 +209,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                             style={{ width: `${percentage}%` }}
                         ></div>
                     </div>
-                    {/* CELEBRATION BUTTON (Only if complete) */}
+                    {/* BOTÓN DE CELEBRACIÓN (Solo si está completa) */}
                     {percentage >= 100 && (
                         <button
                             onClick={(e) => {
@@ -223,7 +223,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                     )}
                 </div>
 
-                {/* EXPANDABLE ACTIONS AREA (Hide if complete to focus on Reclaim) */}
+                {/* ÁREA DE ACCIONES EXPANDIBLE (Ocultar si está completa para enfocar en Reclamar) */}
                 {percentage < 100 && (
                     <>
                         {
@@ -284,10 +284,10 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                                 <button
                                     onClick={() => {
                                         setExpandedGoalId(goal.id);
-                                        // Pre-fill default contribution if fixed
+                                        // Rellenar contribución predeterminada si es fija
                                         if (goal.type === 'FIXED' && goal.contributionAmount) {
                                             setTransactionAmount(goal.contributionAmount.toString());
-                                            // Also pre-select source account if available
+                                            // También pre-seleccionar cuenta de origen si está disponible
                                             if (goal.sourceAccountId) setSelectedAccountId(goal.sourceAccountId.toString());
                                         } else {
                                             setTransactionAmount('');
@@ -306,7 +306,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
         );
     };
 
-    // --- RECLAIM LOGIC ---
+    // --- LÓGICA DE RECLAMO ---
     const [reclaimModal, setReclaimModal] = useState<{ isOpen: boolean; goal: Goal | null }>({ isOpen: false, goal: null });
     const [reclaimAccountId, setReclaimAccountId] = useState('');
     const [isReclaiming, setIsReclaiming] = useState(false);
@@ -358,11 +358,11 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
 
     async function handleSmartDelete(goal: Goal) {
         if (goal.currentAmount > 0) {
-            // Open Reclaim Modal
+            // Abrir Modal de Reclamo
             setReclaimModal({ isOpen: true, goal });
-            setReclaimAccountId(''); // Reset selection
+            setReclaimAccountId(''); // Reiniciar selección
         } else {
-            // Standard Delete
+            // Eliminación Estándar
             handleDelete(goal.id);
         }
     }
@@ -373,12 +373,12 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
             return;
         }
 
-        setIsReclaiming(true); // START LOADING
+        setIsReclaiming(true); // INICIAR CARGA
 
         try {
             await deleteGoalWithReclaim(reclaimModal.goal.id, parseInt(reclaimAccountId));
 
-            // Celebration if goal was effectively reached (e.g., > 99%)
+            // Celebración si la meta fue alcanzada efectivamente (ej. > 99%)
             const isSuccess = (reclaimModal.goal.currentAmount / reclaimModal.goal.targetAmount) >= 0.99;
 
             if (isSuccess) {
@@ -398,13 +398,13 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
         } catch (error) {
             toast.error("Error al reclamar fondos");
         } finally {
-            setIsReclaiming(false); // END LOADING
+            setIsReclaiming(false); // TERMINAR CARGA
         }
     }
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* ACTION HEADER */}
+            {/* ENCABEZADO DE ACCIÓN */}
             <div className="flex flex-col md:flex-row justify-between items-center bg-linear-to-br from-pink-500 to-rose-600 p-8 rounded-[2.5rem] shadow-xl text-white relative overflow-hidden">
                 <div className="relative z-10 text-center md:text-left">
                     <h2 className="text-3xl font-black mb-2">Tus Metas</h2>
@@ -417,14 +417,14 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                     <Plus size={24} />
                     Nueva Meta
                 </button>
-                {/* Decoration */}
+                {/* Decoración */}
                 <PiggyBank className="absolute -bottom-6 -right-6 w-48 h-48 text-white opacity-10 rotate-12" />
             </div>
 
-            {/* GOALS GRID */}
+            {/* CUADRÍCULA DE METAS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {goals.map(goal => (
-                    <div key={goal.id} className="relative"> {/* Wrapper for positioning context if needed */}
+                    <div key={goal.id} className="relative"> {/* Contenedor para contexto de posicionamiento si es necesario */}
                         <GoalCard goal={goal} />
                     </div>
                 ))}
@@ -438,7 +438,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                 )}
             </div>
 
-            {/* RECLAIM MODAL */}
+            {/* MODAL DE RECLAMO */}
             {reclaimModal.isOpen && reclaimModal.goal && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                     <div className="bg-white dark:bg-zinc-950 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300 text-center">
@@ -500,7 +500,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                 </div>
             )}
 
-            {/* FORM MODAL (Existing) */}
+            {/* MODAL DE FORMULARIO */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                     <div className="bg-white dark:bg-zinc-950 w-full max-w-2xl rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
@@ -524,7 +524,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                                 </div>
                             </div>
 
-                            {/* Priority & Type */}
+                            {/* Prioridad y Tipo */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="text-xs font-bold text-zinc-500 uppercase ml-2">Prioridad</label>
@@ -543,15 +543,40 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-zinc-500 uppercase ml-2">Tipo</label>
-                                    <div className="flex gap-2 mt-2">
-                                        <button onClick={() => setForm({ ...form, type: 'VARIABLE' })} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all border-2 ${form.type === 'VARIABLE' ? 'bg-zinc-800 text-white border-zinc-800' : 'text-zinc-400 border-zinc-100'}`}>Flexible</button>
-                                        <button onClick={() => setForm({ ...form, type: 'FIXED' })} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all border-2 ${form.type === 'FIXED' ? 'bg-zinc-800 text-white border-zinc-800' : 'text-zinc-400 border-zinc-100'}`}>Fijo</button>
+                                    <label className="text-xs font-bold text-zinc-500 uppercase ml-2 mb-2 block">Tipo de Meta</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => setForm({ ...form, type: 'VARIABLE' })}
+                                            className={`p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${form.type === 'VARIABLE' ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-black' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-500 hover:border-zinc-300'}`}
+                                        >
+                                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                                                <PiggyBank size={48} />
+                                            </div>
+                                            <div className="relative z-10">
+                                                <span className="block text-2xl mb-1">🐖</span>
+                                                <span className="font-black text-sm block">Flexible</span>
+                                                <span className="text-[10px] opacity-70 block mt-1 font-medium leading-tight">Ahorra cuando puedas, sin presiones ni fechas fijas.</span>
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setForm({ ...form, type: 'FIXED' })}
+                                            className={`p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${form.type === 'FIXED' ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-white dark:border-white dark:text-black' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-500 hover:border-zinc-300'}`}
+                                        >
+                                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                                                <Calendar size={48} />
+                                            </div>
+                                            <div className="relative z-10">
+                                                <span className="block text-2xl mb-1">📅</span>
+                                                <span className="font-black text-sm block">Fijo</span>
+                                                <span className="text-[10px] opacity-70 block mt-1 font-medium leading-tight">Compromiso periódico (semanal/mensual) con débito auto.</span>
+                                            </div>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SMART CALCULATOR PREVIEW */}
+                            {/* VISTA PREVIA DE CALCULADORA INTELIGENTE */}
                             {form.targetAmount && form.deadline && recommended && (
                                 <div className="bg-indigo-50 dark:bg-indigo-900/20 p-5 rounded-3xl border border-indigo-100 dark:border-indigo-800/30">
                                     <div className="flex items-center gap-2 mb-3 text-indigo-600 dark:text-indigo-400">
@@ -575,7 +600,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                                 </div>
                             )}
 
-                            {/* FIXED OPTIONS */}
+                            {/* OPCIONES FIJAS */}
                             {form.type === 'FIXED' && (
                                 <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl space-y-4 animate-in fade-in">
                                     <p className="text-xs font-bold text-zinc-400 uppercase">Configuración de Ahorro Automático</p>
@@ -603,7 +628,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                                 </div>
                             )}
 
-                            {/* DEADLINE (For everyone) */}
+                            {/* FECHA LÍMITE (Para todos) */}
                             <div>
                                 <label className="text-xs font-bold text-zinc-500 uppercase ml-2">Fecha Límite</label>
                                 <input type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} className="w-full bg-zinc-50 dark:bg-zinc-900 border-transparent rounded-2xl px-5 py-4 font-bold text-lg outline-none mt-2" />

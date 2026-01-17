@@ -7,9 +7,14 @@ import { toast } from 'sonner';
 import { confirmDelete } from '@/components/DeleteConfirmation';
 import ExpenseWizard from '@/components/ExpenseWizard';
 import { updateCategoryLimit } from '@/app/actions/categories';
+import { Search, Filter, Plus, Trash2, Calendar, CreditCard as CardIcon, DollarSign, Wallet } from 'lucide-react';
+import { CategoryIcon } from '@/components/CategoryIcon';
+
+// Tipo Expense extendido para incluir la relación
+type ExpenseWithCategory = Expense & { categoryRel?: Category | null };
 
 interface ExpensesTabProps {
-    expenses: Expense[];
+    expenses: ExpenseWithCategory[];
     creditCards: CreditCard[];
     accounts: Account[];
     categories: Category[];
@@ -23,13 +28,18 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
     const [showWizard, setShowWizard] = useState(false);
     const [showCategoryManager, setShowCategoryManager] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'grouped' | 'subscriptions'>('list');
-    const [currentPage, setCurrentPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // Filter out debts
-    const expensesList = expenses.filter(e => e.category !== 'Deuda');
+    // Filtrar deudas y aplicar búsqueda
+    const expensesList = expenses.filter(e => {
+        // Se eliminó el filtro !isDebt para mostrar todos los gastos
+        const matchesSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            e.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (e.amount.toString().includes(searchQuery));
+        return matchesSearch;
+    });
+
     const totalExpenses = expensesList.reduce((sum, exp) => sum + exp.amount, 0);
-
-    const today = new Date().getDate();
 
     async function handleDelete(id: number) {
         confirmDelete(async () => {
@@ -43,107 +53,117 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
         });
     }
 
-    // Helper for category colors/icons if needed, though we use the ones from DB mostly
     const getCategoryColor = (catName: string) => {
         const cat = categories.find(c => c.name === catName);
         return cat?.color || 'text-zinc-500';
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center gap-4">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+
+            {/* --- ENCABEZADO Y ACCIONES --- */}
+            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-end">
                 <div>
-                    <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Mis Gastos</h2>
-                    <p className="text-zinc-500 dark:text-zinc-400 font-medium">Gestiona y optimiza tus salidas de dinero.</p>
+                    <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">Mis Gastos</h2>
+                    <p className="text-zinc-500 dark:text-zinc-400 font-medium max-w-md">
+                        Controla cada centavo. Gestiona tus salidas, suscripciones y límites de presupuesto.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <button
+                        onClick={() => setShowCategoryManager(true)}
+                        className="h-12 px-6 rounded-2xl font-bold bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all shadow-sm hover:shadow-md"
+                    >
+                        Categorías
+                    </button>
+
+                    <button
+                        onClick={() => setShowWizard(true)}
+                        className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 dark:bg-zinc-100 px-8 font-bold text-white dark:text-black transition-all hover:bg-zinc-800 dark:hover:bg-zinc-200 hover:scale-105 shadow-xl hover:shadow-2xl hover:shadow-indigo-500/20 flex-1 md:flex-none"
+                    >
+                        <span className="flex items-center gap-2">
+                            <Plus className="w-5 h-5" /> Nuevo Gasto
+                        </span>
+                        <div className="absolute inset-0 -z-10 bg-linear-to-r from-indigo-500 to-purple-500 opacity-0 transition-opacity duration-500 group-hover:opacity-10" />
+                    </button>
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-                <button
-                    onClick={() => setShowCategoryManager(true)}
-                    className="h-12 px-6 rounded-2xl font-bold bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all shadow-sm hover:shadow-md"
-                >
-                    Categorías
-                </button>
-
-                <button
-                    onClick={() => setShowWizard(true)}
-                    className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 dark:bg-zinc-100 px-6 font-medium text-white dark:text-black transition-all hover:bg-zinc-800 dark:hover:bg-zinc-200 hover:scale-105 shadow-lg hover:shadow-xl flex-1 md:flex-none"
-                >
-                    <span className="flex items-center gap-2">
-                        <span className="text-xl leading-none">+</span> Nuevo Gasto
-                    </span>
-                    <div className="absolute inset-0 -z-10 bg-linear-to-r from-indigo-500 to-purple-500 opacity-0 transition-opacity duration-500 group-hover:opacity-10" />
-                </button>
-            </div>
-
-            {/* --- SUMMARY CARD (Bento Style) --- */}
+            {/* --- TARJETA DE RESUMEN --- */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Total Expense Card */}
-                <div className="col-span-1 md:col-span-2 relative overflow-hidden rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm">
-                    <div className="absolute top-0 right-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-red-500/10 blur-3xl" />
-                    <div className="absolute bottom-0 left-0 -ml-8 -mb-8 h-32 w-32 rounded-full bg-orange-500/10 blur-3xl" />
+                <div className="col-span-1 md:col-span-2 relative overflow-hidden rounded-[2.5rem] bg-zinc-900 dark:bg-zinc-950 text-white border border-zinc-800 p-10 shadow-2xl group">
+                    <div className="absolute top-0 right-0 -mr-8 -mt-8 h-48 w-48 rounded-full bg-indigo-500/30 blur-3xl group-hover:bg-indigo-500/40 transition-all duration-1000" />
+                    <div className="absolute bottom-0 left-0 -ml-8 -mb-8 h-48 w-48 rounded-full bg-pink-500/20 blur-3xl group-hover:bg-pink-500/30 transition-all duration-1000" />
 
-                    <div className="relative z-10 flex flex-col justify-between h-full gap-4">
+                    <div className="relative z-10 flex flex-col justify-between h-full gap-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-900/10 text-red-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 9-7 7-7-7" /></svg>
+                            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+                                <DollarSign className="w-6 h-6 text-white" />
                             </div>
-                            <span className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Total Gastado este Mes</span>
+                            <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Total este mes</span>
                         </div>
                         <div>
-                            <h3 className="text-5xl md:text-6xl font-black text-zinc-900 dark:text-white tracking-tighter blur-sensitive">
+                            <h3 className="text-5xl md:text-7xl font-black tracking-tighter shadow-black drop-shadow-lg">
                                 ${totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </h3>
                         </div>
                     </div>
                 </div>
 
-                {/* Quick Stat / Decoration */}
-                <div className="col-span-1 rounded-[2.5rem] bg-zinc-900 dark:bg-zinc-100 p-8 text-white dark:text-black flex flex-col justify-between relative overflow-hidden shadow-lg">
-                    <div className="absolute inset-0 bg-linear-to-br from-indigo-500/20 to-purple-500/20" />
-                    <div className="relative z-10">
-                        <p className="font-bold opacity-70 mb-2">Transacciones</p>
-                        <p className="text-4xl font-black">{expensesList.length}</p>
+                <div className="col-span-1 rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 flex flex-col justify-center items-center text-center relative overflow-hidden shadow-sm">
+                    <div className="bg-zinc-100 dark:bg-zinc-800 rounded-full h-32 w-32 flex items-center justify-center mb-4">
+                        <span className="text-4xl">📊</span>
                     </div>
-                    <div className="relative z-10 text-sm font-medium opacity-60">
-                        Mantén tus gastos bajo control para aumentar tu patrimonio.
-                    </div>
+                    <p className="text-3xl font-black text-zinc-900 dark:text-white">{expensesList.length}</p>
+                    <p className="text-sm font-bold text-zinc-400 uppercase">Movimientos</p>
                 </div>
             </div>
 
-            {/* --- SEGMENTED CONTROL TOGGLE --- */}
-            <div className="flex justify-center">
-                <div className="inline-flex items-center p-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 relative">
-                    {/* Sliding Background Pill (Simulated with conditional classes for simplicity, ideally automated with layout animations) */}
+            {/* --- CONTROLES: BÚSQUEDA + PESTAÑAS --- */}
+            <div className="sticky top-4 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-xl p-2 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-col md:flex-row gap-2 md:items-center justify-between">
+                {/* Barra de Búsqueda */}
+                <div className="relative flex-1 group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
+                    <input
+                        type="text"
+                        placeholder="Buscar gastos..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-zinc-100 dark:bg-zinc-900/50 border-none rounded-2xl h-12 pl-12 pr-4 font-bold text-zinc-700 dark:text-zinc-200 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                    />
+                </div>
+
+                {/* Control Segmentado */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-1 shrink-0">
                     <button
                         onClick={() => setViewMode('list')}
-                        className={`relative z-10 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${viewMode === 'list' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm scale-100' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 scale-95'}`}
+                        className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${viewMode === 'list' ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
                     >
                         Listado
                     </button>
                     <button
                         onClick={() => setViewMode('grouped')}
-                        className={`relative z-10 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${viewMode === 'grouped' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm scale-100' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 scale-95'}`}
+                        className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${viewMode === 'grouped' ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
                     >
                         Presupuesto
                     </button>
                     <button
                         onClick={() => setViewMode('subscriptions')}
-                        className={`relative z-10 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${viewMode === 'subscriptions' ? 'bg-white dark:bg-zinc-800 text-purple-500 shadow-sm scale-100' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 scale-95'}`}
+                        className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${viewMode === 'subscriptions' ? 'bg-white dark:bg-zinc-800 text-purple-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
                     >
                         Suscripciones
                     </button>
                 </div>
             </div>
 
-            {/* --- VIEWS --- */}
+            {/* --- GRUPOS --- */}
             <div className="min-h-[400px]">
-                {/* 1. LIST VIEW */}
+
+                {/* 1. VISTA DE LISTA */}
                 {viewMode === 'list' && (
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                         {(() => {
-                            // Helper to group by date
                             const grouped = expensesList.reduce((groups, exp) => {
                                 const date = new Date(exp.createdAt).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
                                 if (!groups[date]) groups[date] = [];
@@ -151,43 +171,63 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
                                 return groups;
                             }, {} as Record<string, Expense[]>);
 
+                            if (Object.keys(grouped).length === 0) {
+                                return (
+                                    <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                                        <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-6 text-4xl grayscale">👻</div>
+                                        <p className="text-xl font-bold">No se encontraron gastos</p>
+                                        <p>Intenta con otro término de búsqueda</p>
+                                    </div>
+                                );
+                            }
+
                             return Object.entries(grouped).map(([date, items]) => (
                                 <div key={date} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                    <h4 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3 px-2">{date}</h4>
-                                    <div className="space-y-3">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1" />
+                                        <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 dark:bg-black px-4 py-1 rounded-full border border-zinc-200 dark:border-zinc-800">{date}</h4>
+                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1" />
+                                    </div>
+
+                                    <div className="grid gap-3">
                                         {items.map((exp) => (
-                                            <div key={exp.id} className="group relative bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-3xl p-4 flex items-center gap-4 transition-all hover:shadow-lg hover:border-zinc-200 dark:hover:border-zinc-700 hover:-translate-y-0.5">
-                                                {/* Icon */}
-                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${getCategoryColor(exp.category).includes('text-') ? getCategoryColor(exp.category).replace('text-', 'bg-').replace('500', '100') + ' dark:bg-opacity-20 ' + getCategoryColor(exp.category) : 'bg-zinc-100 text-zinc-500'}`}>
-                                                    {exp.category === 'Fijo' ? '🏠' : exp.category === 'Entretenimiento' ? '🍿' : exp.category === 'Comida' ? '🍔' : exp.category === 'Transporte' ? '🚗' : exp.category === 'Salud' ? '💊' : '💸'}
+                                            <div key={exp.id} className="group relative bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-indigo-500/30 dark:hover:border-indigo-500/30 rounded-3xl p-5 flex items-center gap-5 transition-all hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-0.5">
+
+                                                {/* Caja de Icono */}
+                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${getCategoryColor(exp.category)} ${getCategoryColor(exp.category).includes('text-') ? getCategoryColor(exp.category).replace('text-', 'bg-').replace('500', '100') + ' dark:bg-opacity-10' : 'bg-zinc-100'}`}>
+                                                    <CategoryIcon iconName={exp.categoryRel?.icon || categories.find(c => c.name === exp.category)?.icon || 'HelpCircle'} size={24} />
                                                 </div>
 
-                                                {/* Info */}
-                                                <div className="flex-1 min-w-0">
+                                                <div className="flex-1 min-w-0 pr-16">
                                                     <div className="flex justify-between items-start">
                                                         <div>
-                                                            <h4 className="font-bold text-base md:text-lg text-zinc-900 dark:text-white truncate">{exp.name}</h4>
-                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className="text-xs font-bold text-zinc-500">{exp.category}</span>
-                                                                {exp.isRecurring && <span className="text-[10px] font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-md">Recurrente</span>}
+                                                            <h4 className="font-bold text-lg text-zinc-900 dark:text-white truncate pr-2">{exp.name}</h4>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-xs font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">{exp.category}</span>
+                                                                {exp.isRecurring && <span className="text-[10px] font-black bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-md uppercase tracking-wider">Suscripción</span>}
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="text-lg md:text-xl font-black text-zinc-900 dark:text-white">-${exp.amount.toFixed(2)}</p>
-                                                            {exp.accountId && <p className="text-xs font-medium text-zinc-400">
-                                                                {accounts.find(a => a.id === exp.accountId)?.name || 'Cuenta elim.'}
-                                                            </p>}
+                                                            <p className="text-xl font-black text-zinc-900 dark:text-white">-${exp.amount.toFixed(2)}</p>
+                                                            <div className="flex items-center justify-end gap-1 text-xs font-medium text-zinc-400 mt-1">
+                                                                {exp.linkedCardId ? <CardIcon size={12} /> : <Wallet size={12} />}
+                                                                <span>
+                                                                    {exp.linkedCardId
+                                                                        ? (creditCards.find(c => c.id === exp.linkedCardId)?.name || 'Tarjeta')
+                                                                        : (accounts.find(a => a.id === exp.accountId)?.name || 'Efectivo/Otro')}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                {/* Actions */}
+                                                {/* Acción al pasar el mouse */}
                                                 <button
                                                     onClick={() => handleDelete(exp.id)}
-                                                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white dark:bg-zinc-800 shadow-sm rounded-xl text-zinc-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0"
+                                                    className="absolute right-6 top-1/2 -translate-y-1/2 p-3 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 shadow-lg"
                                                     title="Eliminar"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                                                    <Trash2 size={18} />
                                                 </button>
                                             </div>
                                         ))}
@@ -195,21 +235,12 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
                                 </div>
                             ));
                         })()}
-
-                        {/* Empty State */}
-                        {expensesList.length === 0 && (
-                            <div className="bg-zinc-50 dark:bg-zinc-900/30 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-12 text-center">
-                                <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🍃</div>
-                                <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Todo tranquilo por aquí</h3>
-                                <p className="text-zinc-500 mt-2">No tienes gastos registrados. ¡Buen trabajo!</p>
-                            </div>
-                        )}
                     </div>
                 )}
 
-                {/* 2. GROUPED (BUDGET) VIEW */}
+                {/* 2. VISTA DE PRESUPUESTO (AGRUPADO) */}
                 {viewMode === 'grouped' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in zoom-in-95 duration-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in zoom-in-95 duration-500">
                         {Object.entries(
                             expensesList.reduce((acc, exp) => {
                                 const catName = exp.category || 'Otros';
@@ -226,105 +257,98 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
                             const remaining = Math.max(0, limit - data.total);
 
                             return (
-                                <div key={categoryName} className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-6 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all group">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner ${categoryObj?.color?.replace('text-', 'bg-').replace('500', '100') || 'bg-zinc-100'} ${categoryObj?.color || 'text-zinc-500'}`}>
-                                                {categoryName.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-xl text-zinc-900 dark:text-white">{categoryName}</h4>
-                                                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide">{data.items.length} movimientos</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-2xl font-black text-zinc-900 dark:text-white">${data.total.toFixed(0)}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Budget Bar Section */}
-                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-3xl mb-4">
-                                        <div className="flex justify-between items-end mb-3">
-                                            <div>
-                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">PRESUPUESTO</p>
-                                                <div className="flex items-center gap-2 cursor-pointer group/edit hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-1 -ml-2 rounded-lg transition-colors"
-                                                    onClick={async () => {
-                                                        if (!categoryObj) return;
-                                                        const newLimit = window.prompt(`Nuevo límite para ${categoryName}:`, limit.toString());
-                                                        if (newLimit !== null) {
-                                                            const val = parseFloat(newLimit);
-                                                            if (!isNaN(val) && val >= 0) {
-                                                                await updateCategoryLimit(categoryObj.id, val === 0 ? null : val);
-                                                                onUpdate();
-                                                                toast.success("Límite actualizado");
-                                                            }
-                                                        }
-                                                    }}
-                                                >
-                                                    <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
-                                                        {limit > 0 ? `$${limit.toLocaleString()}` : 'Sin límite'}
-                                                    </span>
-                                                    <span className="opacity-0 group-hover/edit:opacity-100 text-xs">✏️</span>
+                                <div key={categoryName} className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-6 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all group flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner ${categoryObj?.color?.replace('text-', 'bg-').replace('500', '100') || 'bg-zinc-100'} ${categoryObj?.color || 'text-zinc-500'}`}>
+                                                    {categoryName.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-xl text-zinc-900 dark:text-white truncate max-w-[120px]">{categoryName}</h4>
+                                                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide">{data.items.length} gastos</p>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                {limit > 0 && (
-                                                    <p className={`text-xs font-bold ${isOverLimit ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                        {isOverLimit ? `Excedido $${(data.total - limit).toFixed(0)}` : `Quedan $${remaining.toFixed(0)}`}
-                                                    </p>
+                                        </div>
+
+                                        <p className="text-3xl font-black text-zinc-900 dark:text-white mb-4">${data.total.toFixed(0)}</p>
+
+                                        {/* Barra de Presupuesto */}
+                                        <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-3xl mb-4">
+                                            <div className="flex justify-between items-end mb-3">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">PRESUPUESTO</p>
+                                                    <div className="flex items-center gap-2 cursor-pointer group/edit hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-1 -ml-2 rounded-lg transition-colors"
+                                                        onClick={async () => {
+                                                            if (!categoryObj) return;
+                                                            const newLimit = window.prompt(`Nuevo límite para ${categoryName}:`, limit.toString());
+                                                            if (newLimit !== null) {
+                                                                const val = parseFloat(newLimit);
+                                                                if (!isNaN(val) && val >= 0) {
+                                                                    await updateCategoryLimit(categoryObj.id, val === 0 ? null : val);
+                                                                    onUpdate();
+                                                                    toast.success("Límite actualizado");
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                                                            {limit > 0 ? `$${limit.toLocaleString()}` : 'Sin límite'}
+                                                        </span>
+                                                        <span className="opacity-0 group-hover/edit:opacity-100 text-xs">✏️</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    {limit > 0 && (
+                                                        <p className={`text-xs font-bold ${isOverLimit ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                            {isOverLimit ? `Excedido $${(data.total - limit).toFixed(0)}` : `Quedan $${remaining.toFixed(0)}`}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                                {limit > 0 ? (
+                                                    <div className={`h-full rounded-full transition-all duration-1000 ${isOverLimit ? 'bg-linear-to-r from-orange-400 to-red-500' : 'bg-linear-to-r from-emerald-400 to-emerald-500'}`} style={{ width: `${percentage}%` }} />
+                                                ) : (
+                                                    <div className="w-full h-full opacity-20 bg-zinc-300 dark:bg-zinc-600" style={{ backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent)', backgroundSize: '1rem 1rem' }} />
                                                 )}
                                             </div>
                                         </div>
-
-                                        <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                            {limit > 0 ? (
-                                                <div className={`h-full rounded-full transition-all duration-1000 ${isOverLimit ? 'bg-linear-to-r from-orange-400 to-red-500' : 'bg-linear-to-r from-emerald-400 to-emerald-500'}`} style={{ width: `${percentage}%` }} />
-                                            ) : (
-                                                <div className="w-full h-full opacity-20 bg-zinc-300 dark:bg-zinc-600" style={{ backgroundImage: 'linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent)', backgroundSize: '1rem 1rem' }} />
-                                            )}
-                                        </div>
                                     </div>
 
-                                    {/* Mini List */}
-                                    <div className="space-y-2 pl-2">
-                                        {data.items.slice(0, 3).map(i => (
-                                            <div key={i.id} className="flex justify-between text-xs text-zinc-500">
-                                                <span className="truncate max-w-[150px]">{i.name}</span>
-                                                <span className="font-medium text-zinc-700 dark:text-zinc-300">-${i.amount.toFixed(0)}</span>
-                                            </div>
-                                        ))}
+                                    {/* Nota al pie de acción */}
+                                    <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 text-center">
+                                        <button onClick={() => { setSearchQuery(categoryName); setViewMode('list'); }} className="text-xs font-bold text-indigo-500 hover:text-indigo-600 uppercase tracking-wider">
+                                            Ver Detalles
+                                        </button>
                                     </div>
                                 </div>
                             );
                         })}
-
-                        {expensesList.length === 0 && (
-                            <div className="col-span-full py-20 text-center opacity-50">No hay datos para mostrar el presupuesto.</div>
-                        )}
                     </div>
                 )}
 
-                {/* 3. SUBSCRIPTIONS VIEW */}
+                {/* 3. VISTA DE SUSCRIPCIONES */}
                 {viewMode === 'subscriptions' && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                        {/* Summary Widget */}
+                        {/* Widget de Resumen */}
                         <div className="relative overflow-hidden rounded-[3rem] bg-indigo-600 text-white p-10 shadow-xl shadow-indigo-500/30">
-                            <div className="absolute top-0 right-0 p-12 opacity-20">
-                                <svg width="200" height="200" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" /></svg>
+                            <div className="absolute top-0 right-0 p-12 opacity-20 transform rotate-12">
+                                <Calendar size={200} />
                             </div>
                             <h3 className="text-xl font-medium text-indigo-200 mb-2">Gastos Fijos Mensuales</h3>
                             <h2 className="text-6xl font-black tracking-tighter mb-4">
                                 ${expensesList.filter(e => e.isRecurring).reduce((s, e) => s + e.amount, 0).toLocaleString()}
                             </h2>
-                            <p className="max-w-md text-indigo-100 text-sm font-medium leading-relaxed">
-                                Este es tu "Número de Supervivencia". La cantidad mínima que necesitas para cubrir tus obligaciones recurrentes cada mes.
+                            <p className="max-w-md text-indigo-100 text-sm font-medium leading-relaxed opacity-80">
+                                Total de tus suscripciones y pagos recurrentes. Este es tu "costo de vida" base.
                             </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                             {expensesList.filter(e => e.isRecurring).map((exp) => (
                                 <div key={exp.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-[2rem] flex flex-col justify-between min-h-[180px] shadow-sm hover:shadow-xl transition-all group hover:-translate-y-1 relative overflow-hidden">
-                                    {/* Decorative top strip */}
                                     <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-purple-500 to-indigo-500" />
 
                                     <div className="flex justify-between items-start">
@@ -348,27 +372,23 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
                                 </div>
                             ))}
                         </div>
-                        {expensesList.filter(e => e.isRecurring).length === 0 && (
-                            <div className="text-center py-12 text-zinc-400 font-medium">No se encontraron suscripciones activas.</div>
-                        )}
                     </div>
                 )}
             </div>
 
-            {/* CATEGORY MANAGER MODAL */}
+            {/* MODAL DE GESTOR DE CATEGORÍAS */}
             {showCategoryManager && (
                 <CategoryManager
                     categories={categories}
                     profileId={profileId}
                     onClose={() => setShowCategoryManager(false)}
                     onUpdate={() => {
-                        // setShowCategoryManager(false); // Optional: keep open or close
                         onUpdate();
                     }}
                 />
             )}
 
-            {/* WIZARD MODAL */}
+            {/* MODAL DE ASISTENTE */}
             {showWizard && (
                 <ExpenseWizard
                     accounts={accounts}
