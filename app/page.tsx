@@ -14,7 +14,11 @@ export default async function Home() {
   const profile = await prisma.profile.findUnique({
     where: { id: profileId },
     include: {
-      expenses: true,
+      expenses: {
+        include: {
+          categoryRel: true
+        }
+      },
       goals: true,
       incomes: true,
       salaries: true,
@@ -48,7 +52,11 @@ export default async function Home() {
       const updatedProfile = await prisma.profile.findUnique({
         where: { id: profileId },
         include: {
-          expenses: true,
+          expenses: {
+            include: {
+              categoryRel: true
+            }
+          },
           goals: true,
           incomes: true,
           salaries: true,

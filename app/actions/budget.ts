@@ -1,6 +1,6 @@
 'use server';
 
-import { Expense, Goal, Profile, AdditionalIncome, Salary, CreditCard, Account, Loan } from "@prisma/client";
+import { Expense, Goal, Profile, AdditionalIncome, Salary, CreditCard, Account, Loan, Category } from "@prisma/client";
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from "next/cache";
 
@@ -31,7 +31,7 @@ export async function createProfile(name: string): Promise<Profile> {
     return profile;
 }
 
-export async function getProfiles(): Promise<(Profile & { expenses: Expense[], goals: Goal[], incomes: AdditionalIncome[], salaries: Salary[], creditCards: CreditCard[], accounts: Account[] })[]> {
+export async function getProfiles(): Promise<(Profile & { expenses: (Expense & { categoryRel?: Category | null })[], goals: Goal[], incomes: AdditionalIncome[], salaries: Salary[], creditCards: CreditCard[], accounts: Account[], categories: Category[] })[]> {
     return await prisma.profile.findMany({
         include: {
             expenses: {

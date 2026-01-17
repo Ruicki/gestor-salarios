@@ -169,7 +169,7 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
                                 if (!groups[date]) groups[date] = [];
                                 groups[date].push(exp);
                                 return groups;
-                            }, {} as Record<string, Expense[]>);
+                            }, {} as Record<string, ExpenseWithCategory[]>);
 
                             if (Object.keys(grouped).length === 0) {
                                 return (
@@ -248,7 +248,7 @@ export default function ExpensesTab({ expenses, creditCards, accounts, categorie
                                 acc[catName].items.push(exp);
                                 acc[catName].total += exp.amount;
                                 return acc;
-                            }, {} as Record<string, { total: number, items: Expense[] }>)
+                            }, {} as Record<string, { total: number, items: ExpenseWithCategory[] }>)
                         ).map(([categoryName, data]) => {
                             const categoryObj = categories.find(c => c.name === categoryName);
                             const limit = categoryObj?.monthlyLimit || 0;
