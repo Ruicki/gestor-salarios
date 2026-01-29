@@ -1,0 +1,353 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { getProfiles } from '@/app/actions/budget';
+import MonthSelector from '@/components/dashboard/MonthSelector';
+import ExportMenu from '@/components/dashboard/ExportMenu';
+import { NetWorthCard } from "@/components/NetWorthCard";
+import { ProfileWithData } from '@/types';
+import { Settings, LogOut, Briefcase, Eye, EyeOff, Wallet, TrendingUp, Landmark, DollarSign, Target, CreditCard as CardIcon } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { toast } from 'sonner';
+
+// Tabs
+import IncomesTab from '@/components/dashboard/tabs/IncomesTab';
+import ExpensesTab from '@/components/dashboard/tabs/ExpensesTab';
+import GoalsTab from '@/components/dashboard/tabs/GoalsTab';
+import DebtsTab from '@/components/dashboard/tabs/DebtsTab';
+import BudgetsTab from '@/components/dashboard/tabs/BudgetsTab';
+import AccountsTab from '@/components/dashboard/tabs/AccountsTab';
+import InsightsTab from '@/components/dashboard/tabs/InsightsTab';
+import CreditCardsTab from '@/components/dashboard/tabs/CreditCardsTab';
+import UserSettingsModal from '@/components/dashboard/modals/UserSettingsModal';
+import ProfileManagerModal from '@/components/dashboard/modals/ProfileManagerModal';
+
+interface BudgetDashboardProps {
+    initialProfile: ProfileWithData;
+}
+
+export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+
+    const currentTab = searchParams.get('tab') || 'incomes';
+    const [activeTab, setActiveTab] = useState(currentTab);
+    const [activeProfile, setActiveProfile] = useState<ProfileWithData>(initialProfile);
+    const [showUserSettings, setShowUserSettings] = useState(false);
+    const [showProfileManager, setShowProfileManager] = useState(false);
+    const [isPrivateMode, setIsPrivateMode] = useState(false);
+
+    // Date State (New)
+    const [selectedDate, setSelectedDate] = useState(new Date());
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (params.get('tab') !== activeTab) {
+            params.set('tab', activeTab);
+            router.push(`${pathname}?${params.toString()}`, { scroll: false });
+        }
+    }, [activeTab, searchParams, pathname, router]);
+
+    const refreshData = async () => {
+        try {
+            const profiles = await getProfiles();
+            const updated = profiles.find(p => p.id === activeProfile.id);
+            if (updated) setActiveProfile(updated);
+        } catch (error) {
+            console.error("Error refreshing data:", error);
+            toast.error("Error al actualizar datos");
+        }
+    };
+
+    const handleLogout = () => {
+        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        router.push('/login');
+    };
+
+    const updateTab = (tab: string) => setActiveTab(tab);
+
+    // --- CÁLCULOS GLOBALES (Filtrados por FECHA) ---
+    const selectedMonth = selectedDate.getMonth();
+    const selectedYear = selectedDate.getFullYear();
+
+    // Helper: Filter by selected month
+    const isInSelectedMonth = (dateStr: Date | string) => {
+        const d = new Date(dateStr);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    };
+
+    // Filtered Lists
+    const expensesList = activeProfile?.expenses?.filter((e) => e.category !== 'Deuda' && isInSelectedMonth(e.createdAt)) || [];
+    const debtsList = activeProfile?.expenses?.filter((e) => e.category === 'Deuda' && isInSelectedMonth(e.createdAt)) || [];
+
+    // Monthly Totals (Filtered)
+    const totalExpenses = expensesList.reduce((sum, exp) => sum + Number(exp.amount), 0);
+    const totalDebtPayments = debtsList.reduce((sum, exp) => sum + Number(exp.amount), 0);
+
+    // Savings (Global Accumulation usually, but we could show monthly variation if we tracked history. Showing Total Current Saved for now)
+    const totalGoalsSaved = activeProfile?.goals?.reduce((sum, g) => sum + Number(g.currentAmount), 0) || 0;
+
+    // Income Calculation (Filtered)
+    const currentMonthSalaries = activeProfile?.salaries?.filter((s) => isInSelectedMonth(s.createdAt)) || [];
+    const baseIncome = currentMonthSalaries.reduce((sum, s) => sum + Number(s.netVal), 0);
+
+    const additionalIncomes = activeProfile?.incomes || [];
+    const monthlyAdditionalIncome = additionalIncomes.reduce((acc, inc) => {
+        // ONE_TIME -> Only current month
+        if (inc.type === 'ONE_TIME') {
+            return isInSelectedMonth(inc.createdAt) ? acc + Number(inc.amount) : acc;
+        }
+        // Recurring -> Always count (Assume active)
+        if (inc.frequency === 'MONTHLY') return acc + Number(inc.amount);
+        if (inc.frequency === 'BIWEEKLY') return acc + (Number(inc.amount) * 2);
+        if (inc.frequency === 'WEEKLY') return acc + (Number(inc.amount) * 4);
+        return acc;
+    }, 0);
+
+    const totalMonthlyIncome = baseIncome + monthlyAdditionalIncome;
+
+    // --- GLOBAL SNAPSHOTS (All Time) ---
+    const balance = activeProfile?.accounts?.reduce((sum, acc) => sum + Number(acc.balance), 0) || 0;
+
+    // Net Worth Calc
+    const totalLoans = activeProfile?.loans?.reduce((sum, loan) => sum + Number(loan.currentBalance), 0) || 0;
+    const totalCreditDebt = (activeProfile?.creditCards?.reduce((sum, card) => sum + Number(card.balance), 0) || 0) + totalLoans;
+    // Net Worth = Assets (Cash + Savings) - Liabilities (Debt)
+    // Note: If you have assets not in savings/cash (like house/car), they aren't here yet.
+    const netWorth = balance + totalGoalsSaved - totalCreditDebt;
+
+    return (
+        <div className={`w-full max-w-[1400px] mx-auto space-y-12 pb-24 ${isPrivateMode ? 'private-mode' : ''}`}>
+
+            {/* HEADER */}
+            <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-zinc-200 dark:border-zinc-800 pb-10">
+                <div className="text-center md:text-left">
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-linear-to-r from-zinc-900 via-zinc-700 to-zinc-900 dark:from-white dark:via-zinc-400 dark:to-zinc-600 mb-4">
+                        Finanzas Maestras
+                    </h1>
+                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <p className="text-zinc-500 dark:text-white/70 font-bold text-lg">Control total de tu flujo.</p>
+
+                        {/* Month Selector */}
+                        <MonthSelector
+                            currentDate={selectedDate}
+                            onMonthChange={setSelectedDate}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3 items-center">
+                    <button
+                        onClick={() => setIsPrivateMode(!isPrivateMode)}
+                        className={`p-3 rounded-2xl border transition-all relative group overflow-hidden ${isPrivateMode ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:text-indigo-400'}`}
+                        title="Modo Privado (Blur)"
+                    >
+                        {isPrivateMode ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+                    </button>
+
+                    <ThemeToggle />
+
+                    <ExportMenu profile={activeProfile} />
+
+                    <button
+                        onClick={() => setShowUserSettings(true)}
+                        className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-2"
+                    >
+                        <Settings className="w-5 h-5" />
+                        <span className="hidden md:inline">Ajustes</span>
+                    </button>
+
+                    <button
+                        onClick={handleLogout}
+                        className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-2"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span className="hidden md:inline">Salir</span>
+                    </button>
+
+                    {activeProfile?.role === 'ADMIN' && (
+                        <button
+                            onClick={() => setShowProfileManager(true)}
+                            className="bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+                        >
+                            <Briefcase className="w-5 h-5" />
+                            <span className="hidden md:inline">Gestionar</span>
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* MODALS */}
+            {showUserSettings && (
+                <UserSettingsModal
+                    isOpen={showUserSettings}
+                    onClose={() => setShowUserSettings(false)}
+                    profile={activeProfile}
+                    onUpdate={refreshData}
+                />
+            )}
+            {showProfileManager && activeProfile?.role === 'ADMIN' && (
+                <ProfileManagerModal
+                    isOpen={showProfileManager}
+                    onClose={() => setShowProfileManager(false)}
+                    currentUser={activeProfile}
+                />
+            )}
+
+            {/* DASHBOARD CONTENT */}
+            {activeProfile ? (
+                <>
+                    {/* KPI CARDS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {/* 1. Cash Available */}
+                        <div className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-green-500 p-6 rounded-4xl shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <Wallet className="w-20 h-20 text-emerald-500" />
+                            </div>
+                            <p className="text-zinc-500 font-bold mb-1 uppercase text-xs tracking-wider">Dinero disponible</p>
+                            <p className={`text-3xl md:text-4xl font-black relative z-10 blur-sensitive ${balance >= 0 ? 'text-zinc-900 dark:text-white' : 'text-red-500'}`}>
+                                ${balance.toFixed(2)}
+                            </p>
+                        </div>
+
+                        {/* 2. Net Worth */}
+                        {/* 2. Net Worth */}
+                        <NetWorthCard
+                            accounts={activeProfile.accounts || []}
+                            creditCards={activeProfile.creditCards || []}
+                            loans={activeProfile.loans || []}
+                        />
+
+                        {/* 3. Monthly Income (Filtered) */}
+                        <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-4xl shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <DollarSign className="w-20 h-20 text-blue-500" />
+                            </div>
+                            <p className="text-zinc-500 font-bold mb-1 uppercase text-xs tracking-wider">Ingresos (Mes)</p>
+                            <p className="text-3xl md:text-4xl font-black text-blue-500 relative z-10 blur-sensitive">
+                                +${totalMonthlyIncome.toFixed(2)}
+                            </p>
+                        </div>
+
+                        {/* 4. Total Debt (Snapshot or Filtered? Debt Total is usually snapshot) */}
+                        <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-4xl shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <TrendingUp className="w-20 h-20 text-red-500" />
+                            </div>
+                            <p className="text-zinc-500 font-bold mb-1 uppercase text-xs tracking-wider">Deuda Total</p>
+                            <p className="text-3xl md:text-4xl font-black text-red-500 relative z-10 blur-sensitive">
+                                -${totalCreditDebt.toFixed(2)}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* TABS NAVIGATION */}
+                    <div className="bg-white dark:bg-zinc-900/80 p-1.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 backdrop-blur-xl relative md:sticky md:top-6 z-40 mb-8 md:mb-0 shadow-xl shadow-zinc-200/50 dark:shadow-none mx-auto max-w-5xl">
+                        <div className="grid grid-cols-3 md:flex md:justify-between gap-1">
+                            {/* Accounts */}
+                            <button onClick={() => updateTab('accounts')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'accounts' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                <Landmark size={18} />
+                                <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Cuentas</span>
+                            </button>
+                            {/* Incomes */}
+                            <button onClick={() => updateTab('incomes')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'incomes' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                <DollarSign size={18} />
+                                <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Ingresos</span>
+                            </button>
+                            {/* Expenses */}
+                            <button onClick={() => updateTab('expenses')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'expenses' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                <TrendingUp size={18} />
+                                <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Gastos</span>
+                            </button>
+                            {/* Goals */}
+                            <button onClick={() => updateTab('goals')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'goals' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                <Target size={18} />
+                                <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Metas</span>
+                            </button>
+                            {/* Debts */}
+                            <button onClick={() => updateTab('debts')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'debts' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                <CardIcon size={18} />
+                                <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Deudas</span>
+                            </button>
+                            {/* Budgets */}
+                            <button onClick={() => updateTab('budgets')} className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 md:py-3 px-2 md:px-6 rounded-xl transition-all duration-300 md:flex-1 ${activeTab === 'budgets' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg scale-[1.02]' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                                <TrendingUp size={18} />
+                                <span className="text-[10px] md:text-sm font-bold uppercase md:normal-case tracking-wide">Presupuesto</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* TABS CONTENT */}
+                    <div className="min-h-[500px]">
+                        {activeTab === 'accounts' && (
+                            <AccountsTab
+                                accounts={activeProfile.accounts || []}
+                                profileId={activeProfile.id}
+                                onUpdate={refreshData}
+                            />
+                        )}
+
+                        {activeTab === 'incomes' && (
+                            <IncomesTab
+                                incomes={activeProfile.incomes?.filter(i => i.type === 'ONE_TIME' ? isInSelectedMonth(i.createdAt) : true) || []}
+                                salaries={currentMonthSalaries}
+                                accounts={activeProfile.accounts || []}
+                                profileId={activeProfile.id}
+                                onUpdate={refreshData}
+                            />
+                        )}
+
+                        {activeTab === 'expenses' && (
+                            <ExpensesTab
+                                expenses={expensesList}
+                                creditCards={activeProfile.creditCards || []}
+                                accounts={activeProfile.accounts || []}
+                                categories={activeProfile.categories || []}
+                                profileId={activeProfile.id}
+                                onUpdate={refreshData}
+                            />
+                        )}
+
+                        {activeTab === 'goals' && (
+                            <GoalsTab
+                                goals={activeProfile.goals || []}
+                                accounts={activeProfile.accounts || []}
+                                profileId={activeProfile.id}
+                                onUpdate={refreshData}
+                            />
+                        )}
+
+                        {activeTab === 'debts' && (
+                            <DebtsTab
+                                creditCards={activeProfile.creditCards || []}
+                                loans={activeProfile.loans || []}
+                                accounts={activeProfile.accounts || []}
+                                profileId={activeProfile.id}
+                                onUpdate={refreshData}
+                            />
+                        )}
+
+                        {activeTab === 'budgets' && (
+                            <BudgetsTab
+                                categories={activeProfile.categories || []}
+                                expenses={expensesList}
+                                totalIncome={totalMonthlyIncome}
+                                totalDebtPayments={totalDebtPayments}
+                                totalSavings={totalGoalsSaved}
+                                totalCash={balance}
+                                currentMonth={selectedMonth}
+                                currentYear={selectedYear}
+                            />
+                        )}
+                    </div>
+                </>
+            ) : (
+                <div className="text-center py-20">
+                    <h2 className="text-2xl font-bold">Cargando perfil...</h2>
+                </div>
+            )}
+        </div>
+    );
+}
