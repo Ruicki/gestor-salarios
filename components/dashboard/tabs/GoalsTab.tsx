@@ -9,6 +9,7 @@ type Account = ProfileWithData['accounts'][number];
 import { createGoal, deleteGoal, handleGoalTransaction, updateGoal, deleteGoalWithReclaim } from '@/app/actions/budget';
 import { toast } from 'sonner';
 import { confirmDelete } from '@/components/DeleteConfirmation';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { Pencil, Trash2, X, PiggyBank, Calculator, Plus, Eye, EyeOff, Calendar } from 'lucide-react';
 
 interface GoalsTabProps {
@@ -20,6 +21,10 @@ interface GoalsTabProps {
 
 export default function GoalsTab({ goals, accounts, profileId, onUpdate }: GoalsTabProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    // --- LÓGICA DE RECLAMO MOVED TO TOP ---
+    const [reclaimModal, setReclaimModal] = useState<{ isOpen: boolean; goal: Goal | null }>({ isOpen: false, goal: null });
+
+    useScrollLock(isModalOpen || reclaimModal.isOpen);
 
     const [form, setForm] = useState({
         name: '',
@@ -284,23 +289,63 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                                     </div>
                                 </div>
                             ) : (
-                                <button
-                                    onClick={() => {
-                                        setExpandedGoalId(goal.id);
-                                        // Rellenar contribución predeterminada si es fija
-                                        if (goal.type === 'FIXED' && goal.contributionAmount) {
-                                            setTransactionAmount(goal.contributionAmount.toString());
-                                            // También pre-seleccionar cuenta de origen si está disponible
-                                            if (goal.sourceAccountId) setSelectedAccountId(goal.sourceAccountId.toString());
-                                        } else {
-                                            setTransactionAmount('');
-                                        }
-                                    }}
-                                    className="w-full py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold text-sm transition-all flex items-center justify-center gap-2 group-hover:text-zinc-900 dark:group-hover:text-white border border-dashed border-zinc-200 dark:border-zinc-700"
-                                >
-                                    <Plus size={18} />
-                                    <span>Agregar / Retirar</span>
-                                </button>
+                                goal.type === 'FIXED' && goal.contributionAmount ? (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (goal.sourceAccountId) {
+                                                    // Pago Directo
+                                                    handleGoalTransaction(goal.id, Number(goal.contributionAmount), 'DEPOSIT', goal.sourceAccountId)
+                                                        .then(() => {
+                                                            toast.success(`¡Cuota de $${goal.contributionAmount} pagada! 🚀`);
+                                                            confetti({ particleCount: 50, spread: 50, origin: { y: 0.7 } });
+                                                            onUpdate();
+                                                        })
+                                                        .catch((err: any) => toast.error(err.message));
+                                                } else {
+                                                    // Si no tiene cuenta, abrir modal manual
+                                                    setExpandedGoalId(goal.id);
+                                                    setTransactionAmount(String(goal.contributionAmount || ''));
+                                                }
+                                            }}
+                                            className="py-4 rounded-2xl bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-black font-bold text-sm transition-all flex flex-col items-center justify-center gap-1 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                                        >
+                                            <span className="flex items-center gap-1.5"><Calendar size={14} /> Pagar Cuota</span>
+                                            <span className="text-xs opacity-80 font-medium">${Number(goal.contributionAmount).toFixed(2)}</span>
+                                        </button>
+
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setExpandedGoalId(goal.id);
+                                                setTransactionAmount(''); // Manual
+                                                if (goal.sourceAccountId) setSelectedAccountId(goal.sourceAccountId.toString());
+                                            }}
+                                            className="py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold text-sm transition-all flex flex-col items-center justify-center gap-1 border border-dashed border-zinc-200 dark:border-zinc-700"
+                                        >
+                                            <span className="flex items-center gap-1.5"><Plus size={14} /> Abonar Extra</span>
+                                            <span className="text-xs opacity-80 font-medium">U Otra Cantidad</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setExpandedGoalId(goal.id);
+                                            // Rellenar contribución predeterminada si es fija (fallback)
+                                            if (goal.type === 'FIXED' && goal.contributionAmount) {
+                                                setTransactionAmount(goal.contributionAmount.toString());
+                                                if (goal.sourceAccountId) setSelectedAccountId(goal.sourceAccountId.toString());
+                                            } else {
+                                                setTransactionAmount('');
+                                            }
+                                        }}
+                                        className="w-full py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold text-sm transition-all flex items-center justify-center gap-2 group-hover:text-zinc-900 dark:group-hover:text-white border border-dashed border-zinc-200 dark:border-zinc-700"
+                                    >
+                                        <Plus size={18} />
+                                        <span>Agregar / Retirar</span>
+                                    </button>
+                                )
                             )
                         }
                     </>
@@ -310,7 +355,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
     };
 
     // --- LÓGICA DE RECLAMO ---
-    const [reclaimModal, setReclaimModal] = useState<{ isOpen: boolean; goal: Goal | null }>({ isOpen: false, goal: null });
+    // const [reclaimModal, setReclaimModal] = useState... (Moved to top)
     const [reclaimAccountId, setReclaimAccountId] = useState('');
     const [isReclaiming, setIsReclaiming] = useState(false);
 
@@ -406,7 +451,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pt-6">
             {/* ENCABEZADO DE ACCIÓN */}
             <div className="flex flex-col md:flex-row justify-between items-center bg-linear-to-br from-pink-500 to-rose-600 p-8 rounded-[2.5rem] shadow-xl text-white relative overflow-hidden">
                 <div className="relative z-10 text-center md:text-left">

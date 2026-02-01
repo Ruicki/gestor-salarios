@@ -102,8 +102,7 @@ export default function UltimateCreditCard({ card, onPay, onDelete }: UltimateCr
                 <div className="grid grid-cols-2 gap-3 mb-5 p-4 bg-zinc-50 dark:bg-zinc-800/30 rounded-xl border border-zinc-100 dark:border-zinc-800">
                     <div className="flex flex-col gap-1">
                         <span className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase">
-                            <TrendingUp size={12} /> Interés Est.
-                            {!Number(card.interestRate) && <span className="text-amber-500 ml-1">(Est. 45%)</span>}
+                            <TrendingUp size={12} /> Interés {Number(card.interestRate) ? `(${card.interestRate}%)` : '(Est. 45%)'}
                         </span>
                         <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
                             {(() => {

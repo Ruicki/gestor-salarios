@@ -16,6 +16,7 @@ import {
     HelpCircle
 } from 'lucide-react';
 import { CategoryIcon } from '@/components/CategoryIcon';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 type Account = ProfileWithData['accounts'][number];
 type CreditCard = ProfileWithData['creditCards'][number];
@@ -41,7 +42,10 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
     const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CREDIT'>('CASH');
     const [accountId, setAccountId] = useState<string>('');
     const [cardId, setCardId] = useState<string>('');
-    const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+    const [date, setDate] = useState<string>(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }); // YYYY-MM-DD Local
     const [isRecurring, setIsRecurring] = useState(false);
 
     // Carga Inicial (Si las categorías son válidas pero la lista local está vacía)
@@ -58,13 +62,7 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
         }
     }, [categories.length, profileId, onInit]);
 
-    // Bloquear desplazamiento del cuerpo
-    useEffect(() => {
-        document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, []);
+    useScrollLock(true);
 
     // Manejadores
     const handleCategorySelect = (catId: number) => {
@@ -120,7 +118,8 @@ export default function ExpenseWizard({ accounts, creditCards, categories, profi
                 isOneTime: !isRecurring,
                 paymentMethod,
                 accountId: paymentMethod === 'CASH' ? Number(accountId) : undefined,
-                linkedCardId: paymentMethod === 'CREDIT' ? Number(cardId) : undefined
+                linkedCardId: paymentMethod === 'CREDIT' ? Number(cardId) : undefined,
+                date: `${date}T12:00:00` // Append Noon time to prevent timezone shifts (UTC midnight -> Previous Day in West)
             });
 
             toast.success("Gasto registrado con éxito");

@@ -7,6 +7,7 @@ import { createSalary } from '@/app/actions/salary';
 import { DollarSign, Building2, Wallet, Save } from 'lucide-react';
 import SalaryCalculator from './SalaryCalculator';
 import { toast } from 'sonner';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { CategoryIcon, AVAILABLE_ICONS } from '@/components/CategoryIcon';
 
 interface IncomeWizardProps {
@@ -31,13 +32,7 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
     const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
     const [selectedIcon, setSelectedIcon] = useState('Wallet');
 
-    // Bloquear desplazamiento del cuerpo
-    useEffect(() => {
-        document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, []);
+    useScrollLock(true);
 
     // Manejadores
     const handleTypeSelect = (selectedType: IncomeType) => {
@@ -61,6 +56,12 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
         const val = parseFloat(amount);
         if (isNaN(val) || val <= 0) {
             toast.error("Monto inválido");
+            return;
+        }
+
+        // Validación: Cuenta de destino obligatoria
+        if (!selectedAccountId) {
+            toast.error("Selecciona una cuenta de destino");
             return;
         }
 

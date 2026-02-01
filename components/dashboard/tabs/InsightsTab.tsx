@@ -97,7 +97,7 @@ export default function InsightsTab({ expenses, categories, incomes, salaries, c
 
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 pt-6">
 
             {/* --- 1. SECCIÓN DE GRÁFICO HERO --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

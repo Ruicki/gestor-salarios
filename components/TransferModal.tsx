@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createTransfer } from '@/app/actions/budget';
 import { Account } from '@prisma/client';
 import { toast } from 'sonner';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { ArrowRightLeft, CreditCard, ChevronRight, X, ArrowDown } from "lucide-react";
 
 interface TransferModalProps {
@@ -17,6 +18,7 @@ export default function TransferModal({ accounts, onClose, onSuccess }: Transfer
     const [destinationId, setDestinationId] = useState<number | null>(null);
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
+    useScrollLock(true);
 
     const handleTransfer = async () => {
         if (!sourceId || !destinationId || !amount) return;

@@ -70,7 +70,7 @@ export default function FinancialRules({ income, expenses, debtsPayment, totalSa
                                 cy="50%"
                                 innerRadius={40}
                                 outerRadius={60}
-                                paddingAngle={5}
+                                paddingAngle={0}
                                 dataKey="value"
                                 stroke="none"
                             >

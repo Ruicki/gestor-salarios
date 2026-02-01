@@ -61,7 +61,7 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
     const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 pt-6">
             {/* Encabezado / Resumen */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
@@ -146,13 +146,16 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
                                         {getIcon(acc.type)}
                                     </div>
                                     {acc.name !== 'Efectivo' && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleDelete(acc.id); }}
-                                            className={`p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${['BANK', 'CASH', 'WALLET', 'SAVINGS'].includes(acc.type) ? 'hover:bg-white/20 text-white' : 'text-zinc-400 hover:text-red-500 hover:bg-red-50'}`}
-                                            title="Eliminar"
-                                        >
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            {/* TODO: Add Edit Functionality if requested, for now just Delete as per request */}
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(acc.id); }}
+                                                className={`p-2 rounded-xl transition-all bg-white/10 hover:bg-white/30 text-white shadow-sm backdrop-blur-md`}
+                                                title="Eliminar Cuenta"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
 

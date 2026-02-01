@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Profile } from '@prisma/client';
-import { createProfile, deleteProfile, getProfiles } from '@/app/actions/budget';
+import { createProfile, deleteProfile, getProfiles, resetProfileData } from '@/app/actions/budget';
 import { generateAccessCode, resetPassword } from '@/app/actions/auth';
 import { toast } from 'sonner';
 import { Trash2, UserPlus, AlertTriangle, ShieldAlert, KeyRound, Loader2, Eye, Lock } from 'lucide-react';
@@ -203,13 +203,12 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
                                     </div>
 
                                     {/* Acciones */}
-                                    {Number(profile.id) !== currentIdNum && (
-                                        <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2">
 
-                                            {/* IMPERSONAR: FORZAR MOSTRAR */}
+                                        {/* IMPERSONAR (Solo otros) */}
+                                        {Number(profile.id) !== currentIdNum && (
                                             <button
                                                 onClick={() => {
-                                                    // Llamada directa o advertencia de fallback seguro
                                                     if (onImpersonate) {
                                                         onImpersonate(profile);
                                                     } else {
@@ -222,37 +221,58 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
                                                 <Eye size={14} />
                                                 <span>Ver Como</span>
                                             </button>
+                                        )}
 
-                                            {/* RESTABLECER CONTRASEÑA */}
-                                            {profile.email && (
-                                                <button
-                                                    onClick={() => handlePasswordReset(profile.id, profile.name)}
-                                                    className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-zinc-200 dark:border-zinc-700"
-                                                    title="Restablecer Contraseña"
-                                                >
-                                                    <Lock size={14} />
-                                                    <span>Reset</span>
-                                                </button>
-                                            )}
+                                        {/* RESTABLECER CONTRASEÑA (Solo otros con email) */}
+                                        {Number(profile.id) !== currentIdNum && profile.email && (
+                                            <button
+                                                onClick={() => handlePasswordReset(profile.id, profile.name)}
+                                                className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-zinc-200 dark:border-zinc-700"
+                                                title="Restablecer Contraseña"
+                                            >
+                                                <Lock size={14} />
+                                                <span>Reset</span>
+                                            </button>
+                                        )}
 
-                                            {/* Generar Código si no tiene email */}
-                                            {!profile.email && (
-                                                <button
-                                                    onClick={async () => {
-                                                        // @ts-ignore
-                                                        const res = await generateAccessCode(profile.id);
-                                                        if (res.code) {
-                                                            const msg = `CÓDIGO DE INVITACIÓN:\n\n${res.code}\n\nComparte este código con el usuario.`;
-                                                            window.prompt("Copia este código:", res.code);
-                                                        }
-                                                    }}
-                                                    className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-500 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-amber-100 dark:border-amber-500/20"
-                                                >
-                                                    <KeyRound size={14} />
-                                                    <span>Código</span>
-                                                </button>
-                                            )}
+                                        {/* Generar Código (Solo otros sin email) */}
+                                        {Number(profile.id) !== currentIdNum && !profile.email && (
+                                            <button
+                                                onClick={async () => {
+                                                    // @ts-ignore
+                                                    const res = await generateAccessCode(profile.id);
+                                                    if (res.code) {
+                                                        const msg = `CÓDIGO DE INVITACIÓN:\n\n${res.code}\n\nComparte este código con el usuario.`;
+                                                        window.prompt("Copia este código:", res.code);
+                                                    }
+                                                }}
+                                                className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-500 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-amber-100 dark:border-amber-500/20"
+                                            >
+                                                <KeyRound size={14} />
+                                                <span>Código</span>
+                                            </button>
+                                        )}
 
+                                        {/* RESET DATA BUTTON (Todos, incluido uno mismo) */}
+                                        <button
+                                            onClick={() => {
+                                                if (confirm(`¿Estás seguro de que deseas BORRAR TODOS LOS DATOS de ${profile.name}? Esta acción no se puede deshacer.`)) {
+                                                    toast.promise(resetProfileData(profile.id), {
+                                                        loading: 'Reseteando datos...',
+                                                        success: 'Datos eliminados correctamente',
+                                                        error: 'Error al resetear datos'
+                                                    });
+                                                }
+                                            }}
+                                            className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-500 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-orange-100 dark:border-orange-500/20"
+                                            title="Borrar transacciones y resetear saldos"
+                                        >
+                                            <Trash2 size={14} />
+                                            <span>Reset Datos</span>
+                                        </button>
+
+                                        {/* ELIMINAR (Solo otros) */}
+                                        {Number(profile.id) !== currentIdNum && (
                                             <button
                                                 onClick={() => handleDelete(profile.id)}
                                                 className="flex items-center gap-2 bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-500 px-3 py-2 rounded-xl font-bold text-xs transition-transform hover:scale-105 active:scale-95 border border-red-100 dark:border-red-500/20"
@@ -260,8 +280,8 @@ export default function ProfileManager({ profiles: initialProfiles, currentProfi
                                                 <Trash2 size={14} />
                                                 <span>Eliminar</span>
                                             </button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

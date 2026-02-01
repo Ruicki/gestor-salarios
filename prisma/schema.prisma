@@ -214,6 +214,7 @@ model Account {
   balance  Decimal  @db.Decimal(12, 2) @default(0)
   currency String @default("USD")
   isDefault Boolean @default(false) // [NEW] Para identificar cuenta Efectivo única
+  lockDate  DateTime? // [NEW] Fecha de bloqueo de fondos
 
   profileId Int
   profile   Profile @relation(fields: [profileId], references: [id])

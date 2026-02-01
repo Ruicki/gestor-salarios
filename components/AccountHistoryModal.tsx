@@ -5,6 +5,7 @@ import { Account } from '@prisma/client';
 import { getAccountTransactions, adjustAccountBalance } from '@/app/actions/budget';
 import { X, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, DollarSign, Calendar, RefreshCw, Edit2, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 interface AccountHistoryModalProps {
     account: any;
@@ -20,6 +21,8 @@ export default function AccountHistoryModal({ account, onClose, onUpdate }: Acco
     const [isAdjusting, setIsAdjusting] = useState(false);
     const [newBalance, setNewBalance] = useState(account.balance.toString());
     const [adjustmentReason, setAdjustmentReason] = useState('');
+
+    useScrollLock(true); // Lock scroll on mount
 
     useEffect(() => {
         loadHistory();

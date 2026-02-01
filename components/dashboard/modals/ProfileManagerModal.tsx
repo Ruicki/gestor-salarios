@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { ProfileWithData } from '@/types';
+import ProfileManager from '@/components/ProfileManager'; // Ensure this path is correct
 import { toast } from 'sonner';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 interface ProfileManagerModalProps {
     isOpen: boolean;
@@ -12,26 +12,31 @@ interface ProfileManagerModalProps {
     currentUser: ProfileWithData;
 }
 
-import { useScrollLock } from '@/hooks/useScrollLock';
-
 export default function ProfileManagerModal({ isOpen, onClose, currentUser }: ProfileManagerModalProps) {
     useScrollLock(isOpen);
 
+    if (!isOpen) return null;
     if (currentUser.role !== 'ADMIN') return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>Gestión de Perfiles (Admin)</DialogTitle>
-                </DialogHeader>
-                <div className="py-8 text-center text-muted-foreground">
-                    Funcionalidad de gestión de usuarios en desarrollo.
-                </div>
-                <DialogFooter>
-                    <Button onClick={onClose}>Cerrar</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <ProfileManager
+            profiles={[]} // Helper will fetch them on mount
+            currentProfileId={currentUser.id}
+            onClose={onClose}
+            onUpdate={() => window.location.reload()}
+            onImpersonate={async (profile) => {
+                if (confirm(`¿Iniciar sesión como ${profile.name}?`)) {
+                    // Import dynamically to avoid cycle if necessary, or just use the imported action
+                    const { impersonate } = await import('@/app/actions/auth');
+                    const res = await impersonate(profile.id);
+                    if (res?.error) {
+                        toast.error(res.error);
+                    } else {
+                        toast.success(`Cambiando a perfil de ${profile.name}...`);
+                        window.location.reload();
+                    }
+                }
+            }}
+        />
     );
 }

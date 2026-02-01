@@ -6,6 +6,7 @@ import { ProfileWithData } from '@/types';
 import { createCategory, deleteCategory, updateCategory } from '@/app/actions/categories';
 import { toast } from 'sonner';
 import { X, Plus, Trash2, Pencil, Check } from 'lucide-react';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { CategoryIcon, AVAILABLE_ICONS } from './CategoryIcon';
 
 type Category = ProfileWithData['categories'][number];
@@ -26,6 +27,8 @@ const COLORS = [
 export default function CategoryManager({ categories, profileId, onClose, onUpdate }: CategoryManagerProps) {
     const [view, setView] = useState<'list' | 'form'>('list');
     const [editId, setEditId] = useState<number | null>(null);
+
+    useScrollLock(true);
 
     // Estado del Formulario
     const [newName, setNewName] = useState('');

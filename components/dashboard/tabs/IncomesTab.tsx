@@ -39,7 +39,7 @@ export default function IncomesTab({ incomes, salaries, accounts, profileId, cus
     }
 
     return (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 animate-in fade-in slide-in-from-bottom-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 animate-in fade-in slide-in-from-bottom-4 pt-6">
             <div className="space-y-8">
                 {/* Sección Hero / Acción */}
                 <div className="relative overflow-hidden bg-zinc-900 dark:bg-white text-white dark:text-black p-10 rounded-[2.5rem] shadow-xl text-center space-y-6">

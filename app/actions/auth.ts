@@ -250,3 +250,36 @@ export async function resetPassword(profileId: number, newPassword: string) {
         return { error: 'Error al restablecer la contraseña' };
     }
 }
+
+export async function impersonate(targetProfileId: number) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(SESSION_COOKIE)?.value;
+
+    if (!token) return { error: 'No autorizado' };
+
+    const payload = await verifySession(token);
+    if (!payload || payload.role !== 'ADMIN') {
+        return { error: 'Solo los administradores pueden realizar esta acción' };
+    }
+
+    const targetProfile = await prisma.profile.findUnique({
+        where: { id: targetProfileId }
+    });
+
+    if (!targetProfile) return { error: 'Perfil no encontrado' };
+
+    // New Session as Target
+    const newToken = await signSession({
+        userId: targetProfile.id.toString(),
+        role: targetProfile.role
+    });
+
+    cookieStore.set(SESSION_COOKIE, newToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7,
+        path: '/',
+    });
+
+    return { success: true };
+}

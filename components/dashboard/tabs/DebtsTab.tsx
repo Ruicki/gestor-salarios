@@ -12,6 +12,7 @@ import { createLoan, deleteLoan, payLoan, CreateLoanInput } from '@/app/actions/
 import { createCreditCard, deleteCreditCard, payCreditCard } from '@/app/actions/budget';
 import { confirmDelete } from '@/components/DeleteConfirmation';
 import { SmartMoneyInput } from '@/components/SmartMoneyInput';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import UltimateCreditCard from '@/components/cards/UltimateCreditCard';
 import BankLoanCard from '@/components/cards/BankLoanCard';
 import FriendLoanCard from '@/components/cards/FriendLoanCard';
@@ -45,6 +46,9 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
 
     // Modal de Pago
     const [paymentModal, setPaymentModal] = useState<{ isOpen: boolean; type: 'CARD' | 'LOAN'; id: number; name: string; maxAmount: number } | null>(null);
+
+    useScrollLock(isWizardOpen || !!paymentModal?.isOpen);
+
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentAccountId, setPaymentAccountId] = useState('');
 
@@ -204,7 +208,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pt-6">
             {/* HERITAGE & FREEDOM HEADER */}
             <div className="flex flex-col xl:flex-row gap-6">
                 {/* GLOBAL FREEDOM WIDGET */}

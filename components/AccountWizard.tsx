@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createAccount } from '@/app/actions/budget';
 import { toast } from 'sonner';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { Landmark, Wallet, Banknote, PiggyBank, ArrowRight, X } from "lucide-react";
 
 interface AccountWizardProps {
@@ -18,7 +19,10 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
     const [type, setType] = useState<AccountType | null>(null);
     const [name, setName] = useState('');
     const [balance, setBalance] = useState('');
+    const [lockDate, setLockDate] = useState('');
     const [loading, setLoading] = useState(false);
+
+    useScrollLock(true);
 
     const handleTypeSelect = (selectedType: AccountType) => {
         setType(selectedType);
@@ -35,7 +39,7 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
 
         setLoading(true);
         try {
-            await createAccount(name, type, parseFloat(balance), profileId);
+            await createAccount(name, type, parseFloat(balance), profileId, lockDate ? new Date(lockDate) : undefined);
             toast.success("¡Cuenta creada!");
             onSuccess();
             onClose();
@@ -81,8 +85,8 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
                             />
                             <OptionCard
                                 icon={<PiggyBank className="w-8 h-8 text-pink-500" />}
-                                title="Ahorros"
-                                description="Cuenta separada para ahorrar"
+                                title="Ahorros Bloqueados"
+                                description="Cuenta blindada para metas"
                                 onClick={() => handleTypeSelect('SAVINGS')}
                             />
                         </div>
@@ -114,6 +118,25 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
                                     />
                                 </div>
                             </div>
+
+                            {/* LOCK DATE FIELD FOR SAVINGS */}
+                            {type === 'SAVINGS' && (
+                                <div className="space-y-2 bg-pink-50 dark:bg-pink-900/10 p-4 rounded-xl border border-pink-100 dark:border-pink-900/30">
+                                    <label className="text-sm font-bold text-pink-600 dark:text-pink-400 uppercase tracking-wider flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        Bloquear Retiros Hasta
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={lockDate}
+                                        onChange={(e) => setLockDate(e.target.value)}
+                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-pink-200 dark:border-pink-900/50 rounded-xl p-4 text-lg font-bold outline-none focus:border-pink-500 transition-colors"
+                                    />
+                                    <p className="text-xs text-pink-500">
+                                        No podrás usar este dinero para gastos hasta la fecha seleccionada. Solo depósitos.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -50,6 +50,13 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
         }
     }, [activeTab, searchParams, pathname, router]);
 
+    // Sync state with props (Server Actions + router.refresh())
+    useEffect(() => {
+        if (initialProfile) {
+            setActiveProfile(initialProfile);
+        }
+    }, [initialProfile]);
+
     const refreshData = async () => {
         try {
             const profiles = await getProfiles();
@@ -73,9 +80,16 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
     const selectedYear = selectedDate.getFullYear();
 
     // Helper: Filter by selected month
+    // Helper: Filter by selected month using ISO String (UTC) to match database storage
     const isInSelectedMonth = (dateStr: Date | string) => {
-        const d = new Date(dateStr);
-        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+        if (!dateStr) return false;
+        // Ensure we are working with an ISO string (UTC)
+        const iso = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+        // Construct target YYYY-MM
+        const targetMonth = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+        // Compare strictly with the start of the ISO string (e.g., "2024-02")
+        // This relies on our logic of saving dates as Noon UTC, so the UTC date IS the intended date.
+        return iso.startsWith(targetMonth);
     };
 
     // Filtered Lists
@@ -119,7 +133,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
     const netWorth = balance + totalGoalsSaved - totalCreditDebt;
 
     return (
-        <div className={`w-full max-w-[1400px] mx-auto space-y-12 pb-24 ${isPrivateMode ? 'private-mode' : ''}`}>
+        <div className={`w-full max-w-[1400px] mx-auto space-y-12 p-6 md:p-12 pb-32 ${isPrivateMode ? 'private-mode' : ''}`}>
 
             {/* HEADER */}
             <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-zinc-200 dark:border-zinc-800 pb-10">
@@ -339,6 +353,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                                 totalCash={balance}
                                 currentMonth={selectedMonth}
                                 currentYear={selectedYear}
+                                onUpdate={refreshData}
                             />
                         )}
                     </div>
