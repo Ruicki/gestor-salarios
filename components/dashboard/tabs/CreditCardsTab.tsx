@@ -12,10 +12,11 @@ interface CreditCardsTabProps {
     creditCards: CreditCard[];
     accounts: Account[];
     profileId: number;
+    profileName: string;
     onUpdate: () => void;
 }
 
-export default function CreditCardsTab({ creditCards, accounts, profileId, onUpdate }: CreditCardsTabProps) {
+export default function CreditCardsTab({ creditCards, accounts, profileId, profileName, onUpdate }: CreditCardsTabProps) {
     const [form, setForm] = useState({
         name: '',
         limit: '',
@@ -204,15 +205,12 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, onUpd
                 </div>
             </div>
 
-            {/* FORMULARIO Y CONTENEDOR */}
-
-            {/* ... (Existing Form Code Remains but I need to make sure I don't delete it inadvertently, so I will target the grid) */}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 perspectives-container">
                 {finalSortedCards.map((card) => (
                     <UltimateCreditCard
                         key={card.id}
                         card={card}
+                        cardholderName={profileName}
                         onPay={(c) => startPayment(c)}
                         onDelete={(id) => handleDelete(id)}
                         onAddCharge={(c) => handleAddCharge(c, 50)}
@@ -228,6 +226,32 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, onUpd
                     </div>
                 )}
             </div>
+
+            {/* Modal de Pago */}
+            {payingCardId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95">
+                        <h3 className="text-xl font-black mb-6">Pagar Tarjeta</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-sm font-bold text-zinc-500">Cuenta de Origen</label>
+                                <select value={paymentAccountId} onChange={e => setPaymentAccountId(e.target.value)} className="w-full p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl outline-none font-bold">
+                                    <option value="">Seleccionar...</option>
+                                    {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} (${acc.balance})</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-sm font-bold text-zinc-500">Monto</label>
+                                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} className="w-full p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl outline-none font-black text-2xl" placeholder="0.00" />
+                            </div>
+                            <div className="flex gap-3 mt-4">
+                                <button onClick={() => setPayingCardId(null)} className="flex-1 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-2xl font-bold">Cancelar</button>
+                                <button onClick={confirmPayment} className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-bold">Pagar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

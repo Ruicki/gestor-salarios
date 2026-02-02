@@ -6,7 +6,7 @@ import { ProfileWithData } from '@/types';
 type CreditCard = ProfileWithData['creditCards'][number];
 type Loan = ProfileWithData['loans'][number];
 type Account = ProfileWithData['accounts'][number];
-import { Plus, CreditCard as CardIcon, DollarSign, Wallet, X, Calendar, TrendingDown, Percent, Building, AlertTriangle, CheckCircle, Info, Zap, User, Landmark, Flag } from 'lucide-react';
+import { Plus, CreditCard as CardIcon, Building, Flag, X, Calendar, TrendingDown, PiggyBank } from 'lucide-react';
 import { toast } from 'sonner';
 import { createLoan, deleteLoan, payLoan, CreateLoanInput } from '@/app/actions/debts';
 import { createCreditCard, deleteCreditCard, payCreditCard } from '@/app/actions/budget';
@@ -18,14 +18,7 @@ import BankLoanCard from '@/components/cards/BankLoanCard';
 import FriendLoanCard from '@/components/cards/FriendLoanCard';
 import { formatMoney } from '@/lib/utils';
 import {
-    getBestPurchaseDay,
-    calculateCreditHealth,
-    calculateMinimumPayment,
-    calculateProjectedInterest,
-    getDaysToCutoff,
-    calculateNextPaymentSplit,
-    calculateLoanPayoffDate,
-    calculatePayoffImpact
+    calculateLoanPayoffDate
 } from '@/lib/financial-engine';
 
 type DebtsTabProps = {
@@ -33,10 +26,11 @@ type DebtsTabProps = {
     loans: Loan[];
     accounts: Account[];
     profileId: number;
+    profileName: string;
     onUpdate: () => void;
 };
 
-export default function DebtsTab({ creditCards, loans, accounts, profileId, onUpdate }: DebtsTabProps) {
+export default function DebtsTab({ creditCards, loans, accounts, profileId, profileName, onUpdate }: DebtsTabProps) {
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [wizardType, setWizardType] = useState<'CARD' | 'LOAN'>('CARD');
 
@@ -82,15 +76,11 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
     const getFreedomDate = () => {
         let maxDate = new Date();
 
-        // Check Cards (Assuming Minimum Payment logic for worst case or Interest Free logic for best case?)
-        // Let's use Loans as the main driver for long-term debt.
-
         loans.forEach(loan => {
             const payoff = calculateLoanPayoffDate(Number(loan.currentBalance), Number(loan.interestRate) || 0, Number(loan.monthlyPayment) || 0);
             if (payoff && payoff > maxDate) maxDate = payoff;
         });
 
-        // If debt is 0, freedom is now.
         if (totalDebt === 0) return new Date();
 
         return maxDate;
@@ -141,9 +131,6 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                     termMonths: finalTerm,
                     startDate: new Date(),
                     profileId
-                    // Note field logic would go here if Schema supported it (not added yet, maybe put in Name?)
-                    // For now we assume "Note" is part of the implementation plan but maybe missed in schema. 
-                    // Let's prepend it to name if Friend mode? "Tio Juan (Nota...)"
                 });
             }
             onUpdate();
@@ -267,13 +254,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
 
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         {loans.map(loan => {
-                            const isBank = Number(loan.interestRate) > 0; // Simple heuristic or use Type if available
-
-                            // Si tiene interés es BANCO, si no, es AMIGO (simplificación, o usar Flag en DB)
-                            // En la creación usamos el wizardType, pero en la DB a veces no se guarda el "type" estricto FRIEND vs BANK.
-                            // Asumimos: Si tiene interés > 0 O el nombre del lender parece entidad -> Banco.
-                            // Para ser consistentes con el diseño: 
-
+                            const isBank = Number(loan.interestRate) > 0;
                             if (isBank) {
                                 return (
                                     <BankLoanCard
@@ -310,6 +291,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, onUp
                         <div key={card.id} className="scale-90 origin-top-left">
                             <UltimateCreditCard
                                 card={card}
+                                cardholderName={profileName}
                                 onPay={(c) => setPaymentModal({ isOpen: true, type: 'CARD', id: c.id, name: c.name, maxAmount: Number(c.balance) })}
                                 onDelete={(id) => handleDelete(id, 'CARD')}
                             />

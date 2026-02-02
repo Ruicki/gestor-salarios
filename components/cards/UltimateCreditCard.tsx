@@ -11,9 +11,10 @@ interface UltimateCreditCardProps {
     onPay: (card: any) => void;
     onDelete: (id: number) => void;
     onAddCharge?: (card: any) => void;
+    cardholderName?: string;
 }
 
-export default function UltimateCreditCard({ card, onPay, onDelete }: UltimateCreditCardProps) {
+export default function UltimateCreditCard({ card, onPay, onDelete, cardholderName = 'USUARIO' }: UltimateCreditCardProps) {
     // Basic Calculations
     const utilization = (Number(card.balance) / Number(card.limit)) * 100;
     const available = Number(card.limit) - Number(card.balance);
@@ -57,7 +58,7 @@ export default function UltimateCreditCard({ card, onPay, onDelete }: UltimateCr
                     <div className="flex justify-between items-end">
                         <div className="flex flex-col">
                             <span className="text-[9px] uppercase tracking-widest text-zinc-500 mb-0.5">Titular</span>
-                            <span className="font-mono text-sm tracking-widest text-zinc-300">RICARDO</span>
+                            <span className="font-mono text-sm tracking-widest text-zinc-300 uppercase">{cardholderName}</span>
                         </div>
                         <CreditCard size={28} className="opacity-50" />
                     </div>

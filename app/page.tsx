@@ -1,21 +1,22 @@
 import BudgetDashboard from "@/components/BudgetDashboard";
+import LandingPage from "@/components/LandingPage";
 import { getSession } from "./actions/auth";
 import { getProfileById, createAccount } from "./actions/budget";
-import { redirect } from "next/navigation";
 import { ProfileWithData } from "@/types";
 
 export default async function Home() {
   const profileId = await getSession();
 
+  // Si no hay sesión, mostrar Landing Page en lugar de redirigir
   if (!profileId) {
-    redirect('/login');
+    return <LandingPage />;
   }
 
   let profile = await getProfileById(profileId);
 
+  // Si existe sesión pero el perfil fue eliminado de la DB, mostrar Landing Page
   if (!profile) {
-    // Si existe sesión pero el perfil fue eliminado
-    redirect('/login');
+    return <LandingPage />;
   }
 
   // Auto-Reparación: Asegurar que la cuenta 'Efectivo' siempre exista
@@ -26,7 +27,7 @@ export default async function Home() {
     profile = await getProfileById(profileId);
   }
 
-  if (!profile) return null; // Should not happen
+  if (!profile) return <LandingPage />;
 
   return (
     <main className="flex min-h-screen flex-col items-center py-6 md:py-12 px-2 md:px-4 bg-zinc-50 dark:bg-zinc-950">
