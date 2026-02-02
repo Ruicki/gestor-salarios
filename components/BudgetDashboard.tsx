@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getProfiles } from '@/app/actions/budget';
+import { logout } from '@/app/actions/auth';
 import MonthSelector from '@/components/dashboard/MonthSelector';
 import ExportMenu from '@/components/dashboard/ExportMenu';
 import { NetWorthCard } from "@/components/NetWorthCard";
@@ -68,9 +69,14 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
         }
     };
 
-    const handleLogout = () => {
-        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        router.push('/login');
+    const handleLogout = async () => {
+        try {
+            await logout(); // Server Action
+        } catch (error) {
+            console.error("Logout failed", error);
+            // Fallback: force hard reload to login
+            window.location.href = '/login';
+        }
     };
 
     const updateTab = (tab: string) => setActiveTab(tab);
