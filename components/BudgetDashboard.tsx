@@ -333,12 +333,23 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                             />
                         )}
 
+                        {activeTab === 'cards' && (
+                            <CreditCardsTab
+                                creditCards={activeProfile.creditCards || []}
+                                accounts={activeProfile.accounts || []}
+                                profileId={activeProfile.id}
+                                profileName={activeProfile.name}
+                                onUpdate={refreshData}
+                            />
+                        )}
+
                         {activeTab === 'debts' && (
                             <DebtsTab
                                 creditCards={activeProfile.creditCards || []}
                                 loans={activeProfile.loans || []}
                                 accounts={activeProfile.accounts || []}
                                 profileId={activeProfile.id}
+                                profileName={activeProfile.name}
                                 onUpdate={refreshData}
                             />
                         )}
