@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { CreditCard, Account } from '@prisma/client';
+import { ProfileWithData } from '@/types';
 import { createCreditCard, deleteCreditCard, updateCreditCardBalance, payCreditCard } from '@/app/actions/budget';
 import { toast } from 'sonner';
 import { confirmDelete } from '@/components/DeleteConfirmation';
 import { TrendingDown } from 'lucide-react';
 import UltimateCreditCard from '@/components/cards/UltimateCreditCard';
+
+type CreditCard = ProfileWithData['creditCards'][number];
+type Account = ProfileWithData['accounts'][number];
 
 interface CreditCardsTabProps {
     creditCards: CreditCard[];
