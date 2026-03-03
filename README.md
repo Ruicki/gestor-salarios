@@ -43,3 +43,21 @@ Una aplicación web moderna para tomar el control de tus finanzas. Gestiona sala
 ## Despliegue
 
 Este proyecto está optimizado para ser desplegado en [Vercel](https://vercel.com). Consulta la [documentación de Next.js](https://nextjs.org/docs/deployment) para más detalles.
+
+## System Architecture
+
+La aplicación sigue principios de Clean Code y una arquitectura por capas para garantizar escalabilidad, seguridad y modularidad:
+
+1. **Client (Next.js App Router):** Componentes visuales y Server Components. Interfaces con alta densidad de información estructurada bajo roles (RBAC).
+2. **Next.js Server Actions (`app/actions/`):** Puntos de entrada para las peticiones del cliente (API sin rutas). Solo actúan como orquestadores.
+3. **Financial Engine (`lib/financial-engine.ts` y Strategies):** Toda la lógica pesada y los cálculos de deducciones suceden aquí con el **Pattern Strategy** y **Unit Tests** rigurosos.
+4. **Data Access (Repositories):** Los accesos de Prisma están encapsulados en un Patrón Repositorio (`lib/repositories/`) para que la lógica de negocio descanse independientemente de si la BD es PostgreSQL o SQLite.
+5. **Database:** Bases de Datos manejadas mediante transacciones estables (`prisma.$transaction`) asegurando requerimientos transaccionales (ACID).
+
+---
+
+## Contribution Guide
+1. **Ramas (`Git Flow`):** Evita commitear a `main`. Usa ramas `feature/nombre-del-cambio`, `bugfix/nombre-del-error`.
+2. **Clean Code:** Por favor evita a toda costa el uso de tipos `any`. Usa nuestro contenedor estricto de interfaces almacenado en `types/finance.d.ts`.
+3. **Testing:** Cualquier modifcación nueva a los cálculos financieros estrictos debe venir acompañada por su correspondiente PR con pruebas Unitarias en Jest (`__tests__/`). 
+4. **Observabilidad:** Ante un flujo transaccional crítico, no olvides invocar el `logger.info()` o `logger.error()` importado de `lib/logger.ts`.

@@ -56,24 +56,6 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
         }));
     };
 
-    const calculateISR = (monthlySalary: number) => {
-        const annualSalary = monthlySalary * 12;
-        let annualTax = 0;
-
-        if (annualSalary <= 11000) {
-            return 0;
-        }
-
-        if (annualSalary > 11000 && annualSalary <= 50000) {
-            annualTax = (annualSalary - 11000) * 0.15;
-        }
-        else if (annualSalary > 50000) {
-            annualTax = 5850 + (annualSalary - 50000) * 0.25;
-        }
-
-        return annualTax / 12;
-    };
-
     const handleCalculate = async () => {
         if (form.grossVal <= 0 && form.bonus <= 0) {
             toast.warning("Por favor ingresa un salario o un bono para calcular.");
@@ -82,47 +64,14 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
 
         setLoading(true);
 
-        const monthlyGrossForCalc = frequency === 'biweekly' ? form.grossVal * 2 : form.grossVal;
-        const daysInPeriod = frequency === 'biweekly' ? 15 : 30;
-        const dailyRate = form.grossVal / daysInPeriod;
-        const absenceDeduction = dailyRate * form.absentDays;
-        const grossAfterAbsence = Math.max(0, form.grossVal - absenceDeduction);
-        const monthlyGrossAfterAbsence = frequency === 'biweekly' ? grossAfterAbsence * 2 : grossAfterAbsence;
-
-        const socialSec = grossAfterAbsence * 0.0975;
-        const eduIns = grossAfterAbsence * 0.0125;
-        const incomeTax = calculateISR(monthlyGrossAfterAbsence);
-        const finalIncomeTax = frequency === 'biweekly' ? incomeTax / 2 : incomeTax;
-        const totalDeductions = socialSec + eduIns + finalIncomeTax;
-
-        const netVal = (grossAfterAbsence + form.bonus) - totalDeductions;
-
-        // CÁLCULO DÉCIMO TERCER MES BASADO EN FECHA DE PAGO
-        // Usamos la fecha seleccionada por el usuario, no la del sistema
-        const selectedDate = new Date(form.paymentDate);
-        // getMonth() devuelve 0-11, sumamos 1. Pero new Date("YYYY-MM-DD") es UTC. 
-        // Mejor usamos split para asegurar el mes local literal
-        const selectedMonth = parseInt(form.paymentDate.split('-')[1]);
-
-        const isDecimoMonth = [4, 8, 12].includes(selectedMonth);
-        const estimatedDecimoGross = monthlyGrossForCalc / 3;
-        const estimatedDecimoSS = estimatedDecimoGross * 0.0975;
-        const estimatedDecimoNet = estimatedDecimoGross - estimatedDecimoSS;
-
-        // Si es mes de pago, sumamos al neto
-        const finalNetVal = isDecimoMonth ? netVal + estimatedDecimoNet : netVal;
-
         try {
-            await createSalary({
-                grossVal: form.grossVal, // Guardamos el base
+            const response = await createSalary({
+                grossVal: form.grossVal,
                 bonus: form.bonus,
-                taxes: isDecimoMonth ? totalDeductions + estimatedDecimoSS : totalDeductions,
-                netVal: finalNetVal,
-                socialSec: isDecimoMonth ? socialSec + estimatedDecimoSS : socialSec,
-                eduIns: eduIns,
-                incomeTax: finalIncomeTax,
                 company: form.company,
+                frequency: frequency,
                 absentDays: form.absentDays,
+                paymentDate: form.paymentDate,
                 profileId: profileId,
                 accountId: form.accountId ? parseInt(form.accountId) : undefined
             });
@@ -130,18 +79,19 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
             if (onSave) onSave();
 
             setResult({
-                gross: form.grossVal,
-                socialSec: isDecimoMonth ? socialSec + estimatedDecimoSS : socialSec,
-                eduIns,
-                incomeTax: finalIncomeTax,
-                net: finalNetVal,
-                decimo: estimatedDecimoNet,
-                decimoGross: estimatedDecimoGross,
-                bonus: form.bonus,
-                isDecimoIncluded: isDecimoMonth // Indicador para UI
+                gross: response.grossVal,
+                socialSec: response.socialSec,
+                eduIns: response.eduIns,
+                incomeTax: response.incomeTax,
+                net: response.netVal,
+                decimo: response._uiResult.decimoNet,
+                decimoGross: response._uiResult.decimoGross,
+                bonus: response.bonus,
+                isDecimoIncluded: response._uiResult.isDecimoIncluded
             });
 
-            const successMsg = isDecimoMonth
+            const selectedMonth = parseInt(form.paymentDate.split('-')[1]);
+            const successMsg = response._uiResult.isDecimoIncluded
                 ? `¡Cálculo guardado! (Incluye Décimo por ser mes ${selectedMonth} 🎁)`
                 : '¡Salario guardado correctamente!';
 
@@ -157,14 +107,14 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
     };
 
     return (
-        <div className={`bg-white dark:bg-zinc-900/80 backdrop-blur-xl p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-xl dark:shadow-2xl border border-zinc-200 dark:border-zinc-700/50 w-full relative overflow-hidden group hover:shadow-blue-500/10 transition-all duration-500 ${isEmbedded ? 'shadow-none border-0 p-0! bg-transparent!' : ''}`}>
-            {!isEmbedded && <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-red-500 via-orange-500 to-yellow-500"></div>}
+        <div className={`bg-white dark:bg-zinc-900/80 backdrop-blur-xl p-4 md:p-6 rounded-xl md:rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-700/50 w-full relative overflow-hidden transition-all duration-500 ${isEmbedded ? 'shadow-none border-0 p-0! bg-transparent!' : ''}`}>
+            {!isEmbedded && <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-red-500 via-orange-500 to-yellow-500"></div>}
 
-            {!isEmbedded && <h2 className="text-2xl md:text-4xl font-black mb-6 md:mb-8 text-center text-zinc-900 dark:text-white tracking-tight">
+            {!isEmbedded && <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-center text-zinc-900 dark:text-white tracking-tight">
                 Calculador de Salario
             </h2>}
 
-            <div className="flex justify-center mb-6 md:mb-8 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl md:rounded-2xl">
+            <div className="flex justify-center mb-4 md:mb-6 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg">
                 <button
                     onClick={() => setFrequency('monthly')}
                     className={`flex-1 px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-bold transition-all ${frequency === 'monthly' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
@@ -295,7 +245,7 @@ export default function SalaryCalculator({ onSave, profileId, accounts, isEmbedd
                 <button
                     onClick={handleCalculate}
                     disabled={loading}
-                    className="w-full py-4 mt-8 bg-linear-to-r from-red-600 via-orange-600 to-yellow-300 hover:from-red-600 hover:via-orange-400 hover:to-yellow-200 text-white font-bold text-xl rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:grayscale shadow-lg ring-1"
+                    className="w-full py-3 mt-6 bg-linear-to-r from-red-600 via-orange-600 to-yellow-300 hover:from-red-600 hover:via-orange-400 hover:to-yellow-200 text-white font-bold text-sm rounded-lg transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:grayscale shadow-md ring-1"
                 >
                     {loading ? (
                         <span className="flex items-center justify-center gap-2">

@@ -177,3 +177,42 @@ export function calculatePayoffImpact(balance: number, annualRate: number, month
         interestSaved: interestSaved
     };
 }
+
+// --- SALARY LOGIC (STRATEGY PATTERN INJECTED) ---
+
+import { ITaxStrategy } from './strategies/tax/tax.strategy';
+import { SalaryCalculationResult } from '../types/finance';
+
+export function calculateSalary(
+    grossVal: number,
+    bonus: number,
+    frequency: 'monthly' | 'biweekly',
+    absentDays: number,
+    taxStrategy: ITaxStrategy
+): SalaryCalculationResult & { grossVal: number, bonus: number } {
+
+    const monthlyGrossForCalc = frequency === 'biweekly' ? grossVal * 2 : grossVal;
+    const daysInPeriod = frequency === 'biweekly' ? 15 : 30;
+    const dailyRate = grossVal / daysInPeriod;
+
+    const absenceDeduction = dailyRate * absentDays;
+    const grossAfterAbsence = Math.max(0, grossVal - absenceDeduction);
+
+    // We pass the "After Absence" adjusted monthly gross to the tax strategy for a fair calculation
+    const monthlyGrossAfterAbsence = frequency === 'biweekly' ? grossAfterAbsence * 2 : grossAfterAbsence;
+
+    // Use Strategy to get tax breakdown
+    const taxBreakdown = taxStrategy.calculateTaxes(monthlyGrossAfterAbsence, frequency);
+
+    // Final calculations 
+    const totalDeductions = taxBreakdown.totalTaxes;
+    const netVal = (grossAfterAbsence + bonus) - totalDeductions;
+
+    return {
+        ...taxBreakdown,
+        netVal,
+        grossAfterAbsence,
+        grossVal,
+        bonus
+    };
+}

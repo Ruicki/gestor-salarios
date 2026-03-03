@@ -77,17 +77,15 @@ export default function IncomeWizard({ accounts, profileId, onClose, onSuccess }
             if (type === 'SALARY' && salaryMode === 'MANUAL') {
                 // Guardar explícitamente en tabla SALARY para consistencia
                 await createSalary({
-                    grossVal: val, // En modo manual, asumimos Neto = Bruto (sin deducciones rastreadas)
-                    netVal: val,
+                    grossVal: val,
                     bonus: 0,
-                    taxes: 0,
-                    socialSec: 0,
-                    eduIns: 0,
-                    incomeTax: 0,
+                    frequency: 'monthly',
+                    paymentDate: new Date().toISOString().split('T')[0],
                     absentDays: 0,
                     company: description || "Salario Manual",
                     profileId,
-                    accountId: selectedAccountId || undefined
+                    accountId: selectedAccountId || undefined,
+                    isManualCalculation: true // bypass engine
                 });
             } else {
                 // Ingreso Normal (Depósito / Efectivo)
