@@ -26,9 +26,9 @@ export default function ProfileManagerModal({ isOpen, onClose, currentUser }: Pr
             onUpdate={() => window.location.reload()}
             onImpersonate={async (profile) => {
                 if (confirm(`¿Iniciar sesión como ${profile.name}?`)) {
-                    // Import dynamically to avoid cycle if necessary, or just use the imported action
-                    const { impersonate } = await import('@/app/actions/auth');
-                    const res = await impersonate(profile.id);
+                    // Import dynamically to avoid cycle if necessary
+                    const { startImpersonation } = await import('@/app/actions/auth');
+                    const res = await startImpersonation(profile.id);
                     if (res?.error) {
                         toast.error(res.error);
                     } else {

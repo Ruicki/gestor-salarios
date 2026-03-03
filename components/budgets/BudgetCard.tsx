@@ -65,7 +65,7 @@ export default function BudgetCard({ category, expenses, onUpdate }: BudgetCardP
                             {category.name.charAt(0)}
                         </div>
                         <div>
-                            <h4 className="font-bold text-xl text-zinc-900 dark:text-white truncate max-w-[120px]">{category.name}</h4>
+                            <h4 className="font-bold text-xl text-zinc-900 dark:text-white wrap-break-word leading-tight">{category.name}</h4>
                             <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide">{catExpenses.length} gastos</p>
                         </div>
                     </div>
@@ -73,7 +73,7 @@ export default function BudgetCard({ category, expenses, onUpdate }: BudgetCardP
                     {!isEditing && (
                         <button
                             onClick={() => setIsEditing(true)}
-                            className="p-2 text-zinc-300 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                            className="p-2 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 rounded-lg transition-all hover:scale-110"
                             title="Editar Presupuesto"
                         >
                             <Edit2 size={16} />

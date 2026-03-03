@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getProfiles } from '@/app/actions/budget';
-import { logout } from '@/app/actions/auth';
+import { logout, stopImpersonation } from '@/app/actions/auth';
 import MonthSelector from '@/components/dashboard/MonthSelector';
 import ExportMenu from '@/components/dashboard/ExportMenu';
 import { NetWorthCard } from "@/components/NetWorthCard";
@@ -26,14 +26,15 @@ import ProfileManagerModal from '@/components/dashboard/modals/ProfileManagerMod
 
 interface BudgetDashboardProps {
     initialProfile: ProfileWithData;
+    isImpersonating?: boolean;
 }
 
-export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps) {
+export default function BudgetDashboard({ initialProfile, isImpersonating = false }: BudgetDashboardProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
 
-    const currentTab = searchParams.get('tab') || 'incomes';
+    const currentTab = searchParams.get('tab') || 'accounts';
     const [activeTab, setActiveTab] = useState(currentTab);
     const [activeProfile, setActiveProfile] = useState<ProfileWithData>(initialProfile);
     const [showUserSettings, setShowUserSettings] = useState(false);
@@ -140,6 +141,27 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
 
     return (
         <div className={`w-full max-w-[1400px] mx-auto space-y-12 p-6 md:p-12 pb-32 ${isPrivateMode ? 'private-mode' : ''}`}>
+            {/* IMPERSONATION BANNER */}
+            {isImpersonating && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 duration-300">
+                    <div className="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 border border-indigo-400">
+                        <div className="flex items-center gap-2">
+                            <Eye size={18} />
+                            <span className="font-bold text-sm">Viendo como: {activeProfile.name}</span>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                await stopImpersonation();
+                                toast.success("Volviendo a tu perfil...");
+                                router.refresh();
+                            }}
+                            className="bg-white text-indigo-600 px-3 py-1 rounded-full text-xs font-black hover:bg-indigo-50 transition-colors"
+                        >
+                            SALIR
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* HEADER */}
             <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-zinc-200 dark:border-zinc-800 pb-10">
@@ -326,6 +348,7 @@ export default function BudgetDashboard({ initialProfile }: BudgetDashboardProps
                                 accounts={activeProfile.accounts || []}
                                 categories={activeProfile.categories || []}
                                 profileId={activeProfile.id}
+                                profileName={activeProfile.name}
                                 onUpdate={refreshData}
                             />
                         )}

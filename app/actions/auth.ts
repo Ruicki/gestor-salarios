@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { signSession, verifySession } from '@/lib/auth-utils';
+import { logAction } from './audit';
 
 const SESSION_COOKIE = 'auth_session';
 
@@ -251,7 +252,9 @@ export async function resetPassword(profileId: number, newPassword: string) {
     }
 }
 
-export async function impersonate(targetProfileId: number) {
+const IMPERSONATE_COOKIE = 'impersonate_id';
+
+export async function startImpersonation(targetId: number) {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE)?.value;
 
@@ -262,24 +265,32 @@ export async function impersonate(targetProfileId: number) {
         return { error: 'Solo los administradores pueden realizar esta acción' };
     }
 
-    const targetProfile = await prisma.profile.findUnique({
-        where: { id: targetProfileId }
-    });
-
-    if (!targetProfile) return { error: 'Perfil no encontrado' };
-
-    // New Session as Target
-    const newToken = await signSession({
-        userId: targetProfile.id.toString(),
-        role: targetProfile.role
-    });
-
-    cookieStore.set(SESSION_COOKIE, newToken, {
+    // Set temporary cookie
+    cookieStore.set(IMPERSONATE_COOKIE, targetId.toString(), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 7,
         path: '/',
     });
 
+    revalidatePath('/');
+    await logAction('IMPERSONATE_START', `Impersonación iniciada para ID: ${targetId}`, targetId);
     return { success: true };
+}
+
+export async function stopImpersonation() {
+    const cookieStore = await cookies();
+    cookieStore.delete(IMPERSONATE_COOKIE);
+    revalidatePath('/');
+    return { success: true };
+}
+
+export async function getImpersonatedId(): Promise<number | null> {
+    const cookieStore = await cookies();
+    const val = cookieStore.get(IMPERSONATE_COOKIE)?.value;
+    return val ? parseInt(val) : null;
+}
+
+// Deprecated or alias to startImpersonation for compatibility
+export async function impersonate(targetProfileId: number) {
+    return startImpersonation(targetProfileId);
 }

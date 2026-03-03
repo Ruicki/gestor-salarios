@@ -10,16 +10,26 @@ interface AccountWizardProps {
     profileId: number;
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: {
+        id: number;
+        name: string;
+        type: string;
+        balance: number;
+        lockDate?: Date | null;
+    };
+    isEditing?: boolean;
 }
 
 type AccountType = 'BANK' | 'CASH' | 'WALLET' | 'SAVINGS';
 
-export default function AccountWizard({ profileId, onClose, onSuccess }: AccountWizardProps) {
-    const [step, setStep] = useState(1);
-    const [type, setType] = useState<AccountType | null>(null);
-    const [name, setName] = useState('');
-    const [balance, setBalance] = useState('');
-    const [lockDate, setLockDate] = useState('');
+import { updateAccount } from '@/app/actions/budget';
+
+export default function AccountWizard({ profileId, onClose, onSuccess, initialData, isEditing = false }: AccountWizardProps) {
+    const [step, setStep] = useState(isEditing ? 2 : 1);
+    const [type, setType] = useState<AccountType | null>((initialData?.type as AccountType) || null);
+    const [name, setName] = useState(initialData?.name || '');
+    const [balance, setBalance] = useState(initialData?.balance?.toString() || '');
+    const [lockDate, setLockDate] = useState(initialData?.lockDate ? new Date(initialData.lockDate).toISOString().split('T')[0] : '');
     const [loading, setLoading] = useState(false);
 
     useScrollLock(true);
@@ -37,10 +47,26 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
     const handleSubmit = async () => {
         if (!type || !name || !balance) return;
 
+        const balanceNum = parseFloat(balance);
+        if (balanceNum < 0) {
+            toast.error("El saldo no puede ser negativo");
+            return;
+        }
+
         setLoading(true);
         try {
-            await createAccount(name, type, parseFloat(balance), profileId, lockDate ? new Date(lockDate) : undefined);
-            toast.success("¡Cuenta creada!");
+            if (isEditing && initialData) {
+                await updateAccount(initialData.id, {
+                    name,
+                    type,
+                    balance: parseFloat(balance),
+                    lockDate: lockDate ? new Date(lockDate) : undefined
+                });
+                toast.success("¡Cuenta actualizada!");
+            } else {
+                await createAccount(name, type, parseFloat(balance), profileId, lockDate ? new Date(lockDate) : undefined);
+                toast.success("¡Cuenta creada!");
+            }
             onSuccess();
             onClose();
         } catch (error) {
@@ -58,8 +84,8 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
                 {/* Encabezado */}
                 <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white">Nueva Cuenta</h2>
-                        <p className="text-zinc-500 text-sm">Paso {step} de 2</p>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white">{isEditing ? 'Editar Cuenta' : 'Nueva Cuenta'}</h2>
+                        <p className="text-zinc-500 text-sm">{isEditing ? 'Modificar detalles' : `Paso ${step} de 2`}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
                         <X className="w-6 h-6 text-zinc-500" />
@@ -157,7 +183,7 @@ export default function AccountWizard({ profileId, onClose, onSuccess }: Account
                             disabled={!name || !balance || loading}
                             className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:shadow-indigo-500/25 transition-all flex items-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
                         >
-                            {loading ? 'Creando...' : 'Crear Cuenta'}
+                            {loading ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar Cambios' : 'Crear Cuenta')}
                             <ArrowRight className="w-5 h-5" />
                         </button>
                     )}

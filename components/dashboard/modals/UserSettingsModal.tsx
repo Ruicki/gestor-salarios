@@ -8,6 +8,7 @@ import { ProfileWithData } from '@/types';
 import { toast } from 'sonner';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { resetProfileData } from '@/app/actions/budget';
 
 interface UserSettingsModalProps {
     isOpen: boolean;
@@ -52,6 +53,18 @@ export default function UserSettingsModal({ isOpen, onClose, profile, onUpdate }
 
         toast.info("Ajustes guardados (Simulación)");
         onClose();
+    };
+
+    const handleResetProfile = async () => {
+        try {
+            await resetProfileData(profile.id);
+            toast.success("Perfil reseteado exitosamente");
+            onUpdate();
+            onClose();
+        } catch (error) {
+            toast.error("Error al resetear el perfil");
+            console.error(error);
+        }
     };
 
     const getStrengthColor = (index: number) => {
@@ -141,6 +154,29 @@ export default function UserSettingsModal({ isOpen, onClose, profile, onUpdate }
                                 value={passwords.confirm}
                                 onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
                             />
+                        </div>
+                    </div>
+
+                    {/* DANGER ZONE */}
+                    <div className="border-t border-red-100 dark:border-red-900/30 pt-6 mt-6">
+                        <h4 className="text-sm font-bold text-red-500 mb-2 uppercase tracking-wider">Zona de Peligro</h4>
+                        <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl p-4">
+                            <h5 className="font-bold text-zinc-900 dark:text-red-200">Resetear Perfil</h5>
+                            <p className="text-xs text-zinc-500 dark:text-red-300/70 mt-1 mb-4">
+                                Esta acción eliminará permanentemente todas tus cuentas, gastos, metas y tarjetas. Esta acción no se puede deshacer.
+                            </p>
+                            <Button
+                                className="w-full bg-red-500 hover:bg-red-600 text-white font-bold"
+                                onClick={() => {
+                                    if (confirm('¿ESTÁS ABSOLUTAMENTE SEGURO? Esta acción borrará TODOS tus datos financieros de este perfil (Cuentas, Gastos, Tarjetas, Metas). No hay vuelta atrás.')) {
+                                        if (confirm('¿De verdad? Última oportunidad para cancelar.')) {
+                                            handleResetProfile();
+                                        }
+                                    }
+                                }}
+                            >
+                                Borrar Todos mis Datos
+                            </Button>
                         </div>
                     </div>
                 </div>

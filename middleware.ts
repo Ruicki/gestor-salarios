@@ -8,7 +8,8 @@ const key = new TextEncoder().encode(secretKey);
 export async function middleware(request: NextRequest) {
     const session = request.cookies.get('auth_session');
     const path = request.nextUrl.pathname;
-    const isPublicPage = path === '/login' || path === '/register' || path === '/claim';
+    const isAuthPage = path === '/login' || path === '/register' || path === '/claim';
+    const isHomePage = path === '/';
     const isPublicAsset = path.startsWith('/_next') ||
         path.startsWith('/api') ||
         path.includes('.'); // files like favicon.ico
@@ -25,13 +26,13 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // Si no hay sesión válida y no es página pública, redirigir a login
-    if (!isValidSession && !isPublicPage && !isPublicAsset) {
+    // Si no hay sesión válida, redirigir a login (EXCEPTO si es auth, home o asset)
+    if (!isValidSession && !isAuthPage && !isHomePage && !isPublicAsset) {
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // Si hay sesión válida y está en página pública, redirigir al dashboard
-    if (isValidSession && isPublicPage) {
+    // Si hay sesión válida y está en páginas de Auth (login/register), redirigir al dashboard
+    if (isValidSession && isAuthPage) {
         return NextResponse.redirect(new URL('/', request.url));
     }
 

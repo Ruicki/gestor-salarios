@@ -1,16 +1,17 @@
 'use client';
 
 import { formatMoney } from '@/lib/utils';
-import { ArrowUpRight, User, MoreHorizontal, Calendar, TrendingDown, PiggyBank } from 'lucide-react';
+import { ArrowUpRight, User, MoreHorizontal, Calendar, TrendingDown, PiggyBank, Pencil } from 'lucide-react';
 
 interface FriendLoanCardProps {
     loan: any;
     onPay: (loan: any) => void;
     onDelete: (id: number) => void;
     onQuickPay: (loan: any, amount: number) => void;
+    onEdit?: (loan: any) => void;
 }
 
-export default function FriendLoanCard({ loan, onPay, onDelete, onQuickPay }: FriendLoanCardProps) {
+export default function FriendLoanCard({ loan, onPay, onDelete, onQuickPay, onEdit }: FriendLoanCardProps) {
     // Financials
     const currentBalance = Number(loan.currentBalance);
     const totalAmount = Number(loan.totalAmount);
@@ -23,7 +24,7 @@ export default function FriendLoanCard({ loan, onPay, onDelete, onQuickPay }: Fr
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
 
             {/* Top Decoration (Amber for Personal to distinguish from Indigo Bank) */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-400" />
+            <div className="h-1.5 w-full bg-linear-to-r from-amber-400 via-orange-400 to-amber-400" />
 
             <div className="p-6 md:p-8 flex-1 flex flex-col">
                 {/* Header (Identical structure to BankLoanCard) */}
@@ -98,6 +99,15 @@ export default function FriendLoanCard({ loan, onPay, onDelete, onQuickPay }: Fr
                     >
                         Pagar
                     </button>
+                    {onEdit && (
+                        <button
+                            onClick={() => onEdit(loan)}
+                            className="px-4 py-3 bg-white dark:bg-transparent border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-blue-500 rounded-xl transition-colors"
+                            title="Editar"
+                        >
+                            <Pencil size={20} />
+                        </button>
+                    )}
                     <button
                         onClick={() => onDelete(loan.id)}
                         className="px-4 py-3 bg-white dark:bg-transparent border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-red-500 rounded-xl transition-colors"

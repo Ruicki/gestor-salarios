@@ -8,8 +8,8 @@ type Loan = ProfileWithData['loans'][number];
 type Account = ProfileWithData['accounts'][number];
 import { Plus, CreditCard as CardIcon, Building, Flag, X, Calendar, TrendingDown, PiggyBank } from 'lucide-react';
 import { toast } from 'sonner';
-import { createLoan, deleteLoan, payLoan, CreateLoanInput } from '@/app/actions/debts';
-import { createCreditCard, deleteCreditCard, payCreditCard } from '@/app/actions/budget';
+import { createLoan, deleteLoan, payLoan, updateLoan, CreateLoanInput } from '@/app/actions/debts';
+import { createCreditCard, deleteCreditCard, payCreditCard, updateCreditCardDetails } from '@/app/actions/budget';
 import { confirmDelete } from '@/components/DeleteConfirmation';
 import { SmartMoneyInput } from '@/components/SmartMoneyInput';
 import { useScrollLock } from '@/hooks/useScrollLock';
@@ -33,6 +33,7 @@ type DebtsTabProps = {
 export default function DebtsTab({ creditCards, loans, accounts, profileId, profileName, onUpdate }: DebtsTabProps) {
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [wizardType, setWizardType] = useState<'CARD' | 'LOAN'>('CARD');
+    const [editingId, setEditingId] = useState<number | null>(null); // EDIT STATE
 
     // For Loans Wizard
     const [loanWizardMode, setLoanWizardMode] = useState<'BANK' | 'FRIEND'>('BANK');
@@ -67,6 +68,60 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
 
     const [submitting, setSubmitting] = useState(false);
 
+    // --- MANEJADORES DE EDICIÓN ---
+    function openEditLoan(loan: Loan) {
+        setEditingId(loan.id);
+        const isFriend = loan.type === 'PERSONAL' || loan.lender !== loan.name; // Simple heuristic
+        setWizardType('LOAN');
+        setLoanWizardMode(isFriend ? 'FRIEND' : 'BANK');
+        setFriendHasInterest(Number(loan.interestRate) > 0);
+
+        setLoanForm({
+            name: loan.name,
+            lender: loan.lender || loan.name,
+            type: loan.type,
+            totalAmount: Number(loan.totalAmount),
+            currentBalance: Number(loan.currentBalance),
+            interestRate: Number(loan.interestRate) || 0,
+            termMonths: Number(loan.termMonths) || 0,
+            monthlyPayment: Number(loan.monthlyPayment) || 0,
+            paymentDay: loan.paymentDay || 15,
+            isAutomatic: loan.isAutomatic || false,
+            profileId
+        });
+        setIsWizardOpen(true);
+    }
+
+    function openEditCard(card: CreditCard) {
+        setEditingId(card.id);
+        setWizardType('CARD');
+        setCardForm({
+            name: card.name,
+            limit: card.limit.toString(),
+            initialBalance: '', // No editar saldo inicial al editar
+            cutoffDay: card.cutoffDay.toString(),
+            paymentDay: card.paymentDay.toString(),
+            interestRate: card.interestRate?.toString() || '',
+            hasAnnualFee: !!card.annualFee,
+            annualFee: card.annualFee?.toString() || '',
+            annualFeeMonth: card.annualFeeMonth?.toString() || '1',
+        });
+        setIsWizardOpen(true);
+    }
+
+    function resetForms() {
+        setEditingId(null);
+        setLoanForm({
+            name: '', lender: '', type: 'PERSONAL', totalAmount: 0, currentBalance: 0,
+            interestRate: 0, termMonths: 12, monthlyPayment: 0, paymentDay: 15, isAutomatic: false, profileId
+        });
+        setCardForm({
+            name: '', limit: '', initialBalance: '', cutoffDay: '', paymentDay: '',
+            interestRate: '', hasAnnualFee: false, annualFee: '', annualFeeMonth: '1',
+        });
+    }
+
+
     // --- CÁLCULOS GLOBALES ---
     const totalCardDebt = creditCards.reduce((acc, c) => acc + c.balance, 0);
     const totalLoanDebt = loans.reduce((acc, l) => acc + l.currentBalance, 0);
@@ -90,14 +145,15 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
     const isDebtFree = totalDebt === 0;
 
 
-    // --- MANEJADORES: CREAR ---
-    async function handleCreate() {
+    // --- MANEJADORES: CREAR / EDITAR ---
+    async function handleSave() {
         if (!profileId) return;
         setSubmitting(true);
         try {
             if (wizardType === 'CARD') {
                 if (!cardForm.name || !cardForm.limit) { toast.error("Nombre y Límite requeridos"); return; }
-                await createCreditCard({
+
+                const cardData = {
                     name: cardForm.name,
                     limit: parseFloat(cardForm.limit),
                     cutoffDay: parseInt(cardForm.cutoffDay || '1'),
@@ -107,9 +163,19 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                     annualFeeMonth: cardForm.hasAnnualFee ? parseInt(cardForm.annualFeeMonth) : undefined,
                     minPaymentPercentage: 3.0,
                     insuranceRate: 0.0,
-                    initialBalance: cardForm.initialBalance ? parseFloat(cardForm.initialBalance) : 0,
+                    // initialBalance only for create
+                    initialBalance: (!editingId && cardForm.initialBalance) ? parseFloat(cardForm.initialBalance) : 0,
                     profileId
-                });
+                };
+
+                if (editingId) {
+                    await updateCreditCardDetails(editingId, cardData);
+                    toast.success("Tarjeta actualizada");
+                } else {
+                    await createCreditCard(cardData);
+                    toast.success("Tarjeta creada");
+                }
+
             } else {
                 // LOAN
                 if (!loanForm.name || !loanForm.totalAmount) { toast.error("Nombre y Monto requeridos"); return; }
@@ -123,30 +189,48 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                     ? loanForm.termMonths
                     : (friendHasInterest ? loanForm.termMonths : 0);
 
-                await createLoan({
+                const loanData = {
                     ...loanForm,
                     totalAmount: parseFloat(loanForm.totalAmount.toString()),
-                    currentBalance: parseFloat(loanForm.totalAmount.toString()), // Init balance = Total
                     interestRate: finalInterest,
                     termMonths: finalTerm,
                     startDate: new Date(),
                     profileId
-                });
+                };
+
+                if (editingId) {
+                    await updateLoan(editingId, loanData);
+                    toast.success("Préstamo actualizado");
+                } else {
+                    await createLoan({
+                        ...loanData,
+                        currentBalance: parseFloat(loanForm.totalAmount.toString()), // Init balance = Total only on create
+                    });
+                    toast.success("Préstamo creado");
+                }
             }
             onUpdate();
             setIsWizardOpen(false);
-            toast.success("Registro creado exitosamente");
+            resetForms();
         } catch (error) {
-            toast.error("Error creando registro");
+            toast.error("Error guardando registro");
             console.error(error);
         } finally {
             setSubmitting(false);
         }
     }
 
+    // Wrapper for Create button click
+    const startCreate = (type: 'CARD' | 'LOAN') => {
+        resetForms();
+        setWizardType(type);
+        setIsWizardOpen(true);
+    };
+
     // --- MANEJADORES: ELIMINAR ---
     async function handleDelete(id: number, type: 'CARD' | 'LOAN') {
         confirmDelete(async () => {
+            // ...
             try {
                 if (type === 'CARD') await deleteCreditCard(id);
                 else await deleteLoan(id);
@@ -158,17 +242,23 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
 
     // --- MANEJADORES: PAGAR ---
     async function handlePay() {
-        if (!paymentModal || (!paymentAmount && !['QuickPay'].includes('')) || !paymentAccountId) {
-            toast.warning("Completa los campos");
+        if (!paymentModal || (!paymentAmount && !['QuickPay'].includes(''))) {
+            toast.warning("Ingresa un monto");
             return;
         }
         setSubmitting(true);
         try {
             const amount = parseFloat(paymentAmount);
             if (paymentModal.type === 'CARD') {
+                if (!paymentAccountId) {
+                    toast.error("Selecciona cuenta para tarjeta");
+                    setSubmitting(false);
+                    return;
+                }
                 await payCreditCard(paymentModal.id, amount, parseInt(paymentAccountId));
             } else {
-                await payLoan(paymentModal.id, amount, parseInt(paymentAccountId));
+                // Allow null account for Loans (Manual/Cash payment)
+                await payLoan(paymentModal.id, amount, paymentAccountId ? parseInt(paymentAccountId) : null);
             }
             onUpdate();
             setPaymentModal(null);
@@ -206,7 +296,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <h3 className="text-zinc-400 font-bold uppercase tracking-widest text-xs mb-1">Tu Libertad Financiera</h3>
-                                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-400">
+                                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-linear-to-r from-white to-zinc-400">
                                     {isDebtFree ? "¡Eres Libre!" : (isNaN(freedomDate.getTime()) ? "Calculando..." : freedomDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }))}
                                 </h2>
                             </div>
@@ -234,11 +324,11 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
 
                 {/* ACTION BUTTONS */}
                 <div className="flex flex-col justify-center gap-4">
-                    <button onClick={() => { setWizardType('CARD'); setIsWizardOpen(true); }} className="flex items-center gap-3 px-8 py-4 bg-white dark:bg-zinc-800 text-black dark:text-white rounded-4xl font-black hover:scale-105 transition-transform shadow-xl">
+                    <button onClick={() => startCreate('CARD')} className="flex items-center gap-3 px-8 py-4 bg-white dark:bg-zinc-800 text-black dark:text-white rounded-4xl font-black hover:scale-105 transition-transform shadow-xl">
                         <div className="p-2 bg-pink-100 dark:bg-pink-900/30 text-pink-500 rounded-full"><Plus size={20} /></div>
                         Nueva Tarjeta
                     </button>
-                    <button onClick={() => { setWizardType('LOAN'); setIsWizardOpen(true); }} className="flex items-center gap-3 px-8 py-4 bg-white dark:bg-zinc-800 text-black dark:text-white rounded-4xl font-black hover:scale-105 transition-transform shadow-xl">
+                    <button onClick={() => startCreate('LOAN')} className="flex items-center gap-3 px-8 py-4 bg-white dark:bg-zinc-800 text-black dark:text-white rounded-4xl font-black hover:scale-105 transition-transform shadow-xl">
                         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 rounded-full"><Plus size={20} /></div>
                         Nuevo Préstamo
                     </button>
@@ -262,6 +352,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                                         loan={loan}
                                         onPay={() => setPaymentModal({ isOpen: true, type: 'LOAN', id: loan.id, name: loan.name, maxAmount: Number(loan.currentBalance) })}
                                         onDelete={() => handleDelete(loan.id, 'LOAN')}
+                                        onEdit={() => openEditLoan(loan)}
                                     />
                                 );
                             } else {
@@ -272,6 +363,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                                         onPay={() => setPaymentModal({ isOpen: true, type: 'LOAN', id: loan.id, name: loan.name, maxAmount: Number(loan.currentBalance) })}
                                         onDelete={() => handleDelete(loan.id, 'LOAN')}
                                         onQuickPay={(l, amount) => quickPay(l, amount)}
+                                        onEdit={() => openEditLoan(loan)}
                                     />
                                 );
                             }
@@ -294,6 +386,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                                 cardholderName={profileName}
                                 onPay={(c) => setPaymentModal({ isOpen: true, type: 'CARD', id: c.id, name: c.name, maxAmount: Number(c.balance) })}
                                 onDelete={(id) => handleDelete(id, 'CARD')}
+                                onEdit={() => openEditCard(card)}
                             />
                         </div>
                     ))}
@@ -308,7 +401,9 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                         <button onClick={() => setIsWizardOpen(false)} className="absolute top-6 right-6 p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full hover:bg-zinc-200"><X size={20} /></button>
 
                         <h3 className="text-2xl font-black mb-1">
-                            {wizardType === 'CARD' ? 'Nueva Tarjeta' : 'Nuevo Préstamo'}
+                            {editingId
+                                ? (wizardType === 'CARD' ? 'Editar Tarjeta' : 'Editar Préstamo')
+                                : (wizardType === 'CARD' ? 'Nueva Tarjeta' : 'Nuevo Préstamo')}
                         </h3>
                         <p className="text-zinc-500 text-sm font-bold mb-6">Registra tu pasivo para tomar control.</p>
 
@@ -354,12 +449,16 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                                     <input type="number" placeholder="Día Corte" value={cardForm.cutoffDay} onChange={e => setCardForm({ ...cardForm, cutoffDay: e.target.value })} className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl font-bold outline-none" />
                                     <input type="number" placeholder="Día Pago" value={cardForm.paymentDay} onChange={e => setCardForm({ ...cardForm, paymentDay: e.target.value })} className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl font-bold outline-none" />
                                 </div>
-                                <SmartMoneyInput
-                                    placeholder="Tasa Interés (%)"
-                                    value={cardForm.interestRate}
-                                    onMoneyChange={(val) => setCardForm({ ...cardForm, interestRate: val })}
-                                    className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl font-bold outline-none"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        placeholder="Tasa Interés"
+                                        value={cardForm.interestRate}
+                                        onChange={e => setCardForm({ ...cardForm, interestRate: e.target.value })}
+                                        className="w-full p-3 pr-8 bg-zinc-50 dark:bg-zinc-800 rounded-xl font-bold outline-none"
+                                    />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-zinc-400">%</span>
+                                </div>
                             </div>
                         ) : (
                             // LOAN DUAL FORM
@@ -489,8 +588,8 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                             </div>
                         )}
 
-                        <button onClick={handleCreate} disabled={submitting} className={`w-full mt-6 py-4 rounded-xl font-black text-lg hover:scale-[1.02] transition-transform text-white ${wizardType === 'CARD' ? 'bg-pink-500' : loanWizardMode === 'BANK' ? 'bg-indigo-600' : 'bg-amber-500'}`}>
-                            {submitting ? 'Guardando...' : 'Crear Registro'}
+                        <button onClick={handleSave} disabled={submitting} className={`w-full mt-6 py-4 rounded-xl font-black text-lg hover:scale-[1.02] transition-transform text-white ${wizardType === 'CARD' ? 'bg-pink-500' : loanWizardMode === 'BANK' ? 'bg-indigo-600' : 'bg-amber-500'}`}>
+                            {submitting ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Registro')}
                         </button>
                     </div>
                 </div>
@@ -513,6 +612,7 @@ export default function DebtsTab({ creditCards, loans, accounts, profileId, prof
                                     className="w-full p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl outline-none font-bold"
                                 >
                                     <option value="">Seleccionar Cuenta...</option>
+                                    <option value="">-- Pago Externo / Otro --</option>
                                     {accounts.map(acc => (
                                         <option key={acc.id} value={acc.id}>{acc.name} (${acc.balance})</option>
                                     ))}

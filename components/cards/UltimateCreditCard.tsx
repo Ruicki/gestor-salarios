@@ -2,7 +2,7 @@
 
 import { calculateCreditHealth } from '@/lib/financial-engine';
 import { formatMoney } from '@/lib/utils';
-import { CreditCard, Wifi, MoreHorizontal, Calendar, TrendingUp, AlertCircle } from 'lucide-react';
+import { CreditCard, Wifi, MoreHorizontal, Calendar, TrendingUp, AlertCircle, Pencil } from 'lucide-react';
 import React from 'react';
 
 // Relaxed type to accept serialized data
@@ -12,9 +12,10 @@ interface UltimateCreditCardProps {
     onDelete: (id: number) => void;
     onAddCharge?: (card: any) => void;
     cardholderName?: string;
+    onEdit?: (card: any) => void;
 }
 
-export default function UltimateCreditCard({ card, onPay, onDelete, cardholderName = 'USUARIO' }: UltimateCreditCardProps) {
+export default function UltimateCreditCard({ card, onPay, onDelete, cardholderName = 'USUARIO', onEdit }: UltimateCreditCardProps) {
     // Basic Calculations
     const utilization = (Number(card.balance) / Number(card.limit)) * 100;
     const available = Number(card.limit) - Number(card.balance);
@@ -39,7 +40,7 @@ export default function UltimateCreditCard({ card, onPay, onDelete, cardholderNa
             {/* 1. VISUAL CARD (Top) - Full Width */}
             <div className="relative w-full aspect-[1.586/1] shrink-0 rounded-[1.3rem] overflow-hidden bg-zinc-950 text-white shadow-lg flex flex-col justify-between p-6 m-1">
                 {/* Texture */}
-                <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-950" />
+                <div className="absolute inset-0 bg-linear-to-br from-zinc-800 to-zinc-950" />
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay" />
 
                 {/* Top */}
@@ -49,7 +50,7 @@ export default function UltimateCreditCard({ card, onPay, onDelete, cardholderNa
                 </div>
 
                 {/* Chip */}
-                <div className="relative z-10 w-11 h-8 rounded bg-gradient-to-tr from-amber-200 to-amber-100 shadow-sm opacity-90 border border-amber-300/20">
+                <div className="relative z-10 w-11 h-8 rounded bg-linear-to-tr from-amber-200 to-amber-100 shadow-sm opacity-90 border border-amber-300/20">
                     <div className="absolute inset-0 opacity-40 bg-[dashed_border_pattern]" />
                 </div>
 
@@ -147,6 +148,15 @@ export default function UltimateCreditCard({ card, onPay, onDelete, cardholderNa
                     >
                         Pagar
                     </button>
+                    {onEdit && (
+                        <button
+                            onClick={() => onEdit(card)}
+                            className="px-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-blue-500 rounded-xl transition-colors"
+                            title="Editar"
+                        >
+                            <Pencil size={20} />
+                        </button>
+                    )}
                     <button
                         onClick={() => onDelete(card.id)}
                         className="px-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-red-500 rounded-xl transition-colors"

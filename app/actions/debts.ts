@@ -40,12 +40,32 @@ export async function createLoan(data: CreateLoanInput) {
     return loan;
 }
 
+export async function updateLoan(id: number, data: Partial<CreateLoanInput>) {
+    // If updating total usage/balance, logic might be complex.
+    // For now, allow direct update of fields.
+    // Ideally, preventing balance hijack if payments exist is good, but for "Universal Edit" we assume user knows what they do.
+    await prisma.loan.update({
+        where: { id },
+        data: {
+            name: data.name,
+            lender: data.lender,
+            totalAmount: data.totalAmount,
+            // currentBalance: data.currentBalance, // Only manually update balance? Dangerous if edits happen mid-payment history. 
+            // Better to let user edit balance only if strictly needed.
+            interestRate: data.interestRate,
+            termMonths: data.termMonths,
+            monthlyPayment: data.monthlyPayment
+        }
+    });
+    revalidatePath('/budget');
+}
+
 export async function deleteLoan(id: number) {
     await prisma.loan.delete({ where: { id } });
     revalidatePath('/budget');
 }
 
-export async function payLoan(loanId: number, amount: number, sourceAccountId: number) {
+export async function payLoan(loanId: number, amount: number, sourceAccountId?: number | null) {
     if (amount <= 0) throw new Error("El monto debe ser positivo");
 
     const loan = await prisma.loan.findUnique({ where: { id: loanId } });
@@ -55,16 +75,21 @@ export async function payLoan(loanId: number, amount: number, sourceAccountId: n
         throw new Error(`El pago excede la deuda actual ($${Number(loan.currentBalance).toFixed(2)})`);
     }
 
-    const account = await prisma.account.findUnique({ where: { id: sourceAccountId } });
-    if (!account) throw new Error("Cuenta no encontrada");
-    if (Number(account.balance) < amount) throw new Error("Fondos insuficientes en la cuenta de origen");
+    let account;
+    if (sourceAccountId) {
+        account = await prisma.account.findUnique({ where: { id: sourceAccountId } });
+        if (!account) throw new Error("Cuenta no encontrada");
+        if (Number(account.balance) < amount) throw new Error("Fondos insuficientes en la cuenta de origen");
+    }
 
     await prisma.$transaction(async (tx) => {
-        // 1. Deducir de la cuenta de origen
-        await tx.account.update({
-            where: { id: sourceAccountId },
-            data: { balance: { decrement: amount } }
-        });
+        // 1. Deducir de la cuenta de origen (SI EXISTE)
+        if (sourceAccountId) {
+            await tx.account.update({
+                where: { id: sourceAccountId },
+                data: { balance: { decrement: amount } }
+            });
+        }
 
         // 2. Reducir el saldo del préstamo
         const updatedLoan = await tx.loan.update({
@@ -72,37 +97,40 @@ export async function payLoan(loanId: number, amount: number, sourceAccountId: n
             data: { currentBalance: { decrement: amount } }
         });
 
-        // 3. Buscar o Crear Categoría "Deudas" para vincular el gasto
-        let debtCategory = await tx.category.findFirst({
-            where: { profileId: loan.profileId, name: "Deudas" }
-        });
+        // 3. Registrar Gasto (SOLO SI HAY CUENTA, ya que Expense requiere accountId usualmente o queremos trazarlo)
+        // Para simplificar, si no hay cuenta, NO creamos gasto (es un pago externo/ajuste)
+        if (sourceAccountId) {
+            // Buscar o Crear Categoría "Deudas"
+            let debtCategory = await tx.category.findFirst({
+                where: { profileId: loan.profileId, name: "Deudas" }
+            });
 
-        if (!debtCategory) {
-            debtCategory = await tx.category.create({
+            if (!debtCategory) {
+                debtCategory = await tx.category.create({
+                    data: {
+                        name: "Deudas",
+                        icon: "Ban",
+                        color: "text-red-500",
+                        type: "FIXED",
+                        profileId: loan.profileId
+                    }
+                });
+            }
+
+            await tx.expense.create({
                 data: {
-                    name: "Deudas",
-                    icon: "Ban",
-                    color: "text-red-500",
-                    type: "FIXED",
-                    profileId: loan.profileId
+                    name: `Pago Préstamo: ${loan.name}`,
+                    amount: amount,
+                    category: "Deudas",
+                    categoryId: debtCategory.id,
+                    isRecurring: false,
+                    isOneTime: true,
+                    paymentMethod: "TRANSFER",
+                    profileId: loan.profileId,
+                    accountId: sourceAccountId
                 }
             });
         }
-
-        // 4. Registrar Gasto vinculado
-        await tx.expense.create({
-            data: {
-                name: `Pago Préstamo: ${loan.name}`,
-                amount: amount,
-                category: "Deudas", // Compatibilidad
-                categoryId: debtCategory.id, // ID
-                isRecurring: false,
-                isOneTime: true,
-                paymentMethod: "TRANSFER",
-                profileId: loan.profileId,
-                accountId: sourceAccountId
-            }
-        });
 
         // 5. AUTO-DELETE: Si el saldo llega a 0 (o menos), eliminar el préstamo
         if (Number(updatedLoan.currentBalance) <= 0.01) {

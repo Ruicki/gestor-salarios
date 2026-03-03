@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { register } from '@/app/actions/auth';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     async function handleSubmit(formData: FormData) {
         setLoading(true);
@@ -59,13 +61,22 @@ export default function RegisterPage() {
 
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">Contraseña</label>
-                        <input
-                            name="password"
-                            type="password"
-                            required
-                            placeholder="••••••••"
-                            className="w-full bg-zinc-50 dark:bg-zinc-800 border-2 border-transparent focus:border-zinc-900 dark:focus:border-white rounded-2xl px-4 py-3 outline-none font-bold transition-all text-zinc-900 dark:text-white"
-                        />
+                        <div className="relative">
+                            <input
+                                name="password"
+                                type={showPassword ? "text" : "password"}
+                                required
+                                placeholder="••••••••"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border-2 border-transparent focus:border-zinc-900 dark:focus:border-white rounded-2xl px-4 py-3 pr-12 outline-none font-bold transition-all text-zinc-900 dark:text-white"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
                     </div>
 
                     <button

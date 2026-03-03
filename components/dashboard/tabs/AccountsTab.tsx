@@ -3,7 +3,7 @@ import { ProfileWithData } from '@/types';
 
 type Account = ProfileWithData['accounts'][number];
 import { deleteAccount } from '@/app/actions/budget';
-import { Plus, Trash2, Wallet, Landmark, PiggyBank, Banknote } from 'lucide-react';
+import { Plus, Trash2, Wallet, Landmark, PiggyBank, Banknote, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AccountWizard from '@/components/AccountWizard';
 import TransferModal from '@/components/TransferModal';
@@ -20,9 +20,11 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
     const [isCreating, setIsCreating] = useState(false);
     const [isTransferring, setIsTransferring] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null); // Para el modal de historial
+    const [editingAccount, setEditingAccount] = useState<Account | null>(null); // Para edición
     const [loading, setLoading] = useState(false);
     const handleCreateSuccess = () => {
         setIsCreating(false);
+        setEditingAccount(null);
         onUpdate();
     };
 
@@ -101,6 +103,16 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
                 />
             )}
 
+            {editingAccount && (
+                <AccountWizard
+                    profileId={profileId}
+                    onClose={() => setEditingAccount(null)}
+                    onSuccess={handleCreateSuccess}
+                    initialData={editingAccount}
+                    isEditing={true}
+                />
+            )}
+
             {isTransferring && (
                 <TransferModal
                     accounts={accounts}
@@ -147,7 +159,13 @@ export default function AccountsTab({ accounts, profileId, onUpdate }: AccountsT
                                     </div>
                                     {acc.name !== 'Efectivo' && (
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                            {/* TODO: Add Edit Functionality if requested, for now just Delete as per request */}
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setEditingAccount(acc); }}
+                                                className={`p-2 rounded-xl transition-all bg-white/10 hover:bg-white/30 text-white shadow-sm backdrop-blur-md`}
+                                                title="Editar Cuenta"
+                                            >
+                                                <Edit2 className="w-5 h-5" />
+                                            </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleDelete(acc.id); }}
                                                 className={`p-2 rounded-xl transition-all bg-white/10 hover:bg-white/30 text-white shadow-sm backdrop-blur-md`}

@@ -1,11 +1,9 @@
-'use client';
-
 import { useState } from 'react';
 import { ProfileWithData } from '@/types';
-import { createCreditCard, deleteCreditCard, updateCreditCardBalance, payCreditCard } from '@/app/actions/budget';
+import { createCreditCard, deleteCreditCard, updateCreditCardBalance, payCreditCard, updateCreditCardDetails } from '@/app/actions/budget';
 import { toast } from 'sonner';
 import { confirmDelete } from '@/components/DeleteConfirmation';
-import { TrendingDown } from 'lucide-react';
+import { TrendingDown, Pencil, Plus } from 'lucide-react';
 import UltimateCreditCard from '@/components/cards/UltimateCreditCard';
 
 type CreditCard = ProfileWithData['creditCards'][number];
@@ -27,9 +25,12 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, profi
         paymentDay: '',
         interestRate: '',
         annualFee: '',
+        annualFeeMonth: '1',
         minPaymentPercentage: '3.0',
         insuranceRate: '0.25'
     });
+
+    const [editingId, setEditingId] = useState<number | null>(null);
 
     // Estado del Modal de Pago
     const [payingCardId, setPayingCardId] = useState<number | null>(null);
@@ -49,9 +50,29 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, profi
     });
 
     const finalSortedCards = [...sortedActiveCards, ...inactiveCards];
-    const topPriorityId = sortedActiveCards.length > 0 ? sortedActiveCards[0].id : null;
 
-    async function handleCreate() {
+    function startEdit(card: CreditCard) {
+        setEditingId(card.id);
+        setForm({
+            name: card.name,
+            limit: card.limit.toString(),
+            cutoffDay: card.cutoffDay.toString(),
+            paymentDay: card.paymentDay.toString(),
+            interestRate: card.interestRate?.toString() || '',
+            annualFee: card.annualFee?.toString() || '',
+            annualFeeMonth: card.annualFeeMonth?.toString() || '1',
+            minPaymentPercentage: card.minPaymentPercentage?.toString() || '3.0',
+            insuranceRate: card.insuranceRate?.toString() || '0.25'
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+        setEditingId(null);
+        setForm({ name: '', limit: '', cutoffDay: '', paymentDay: '', interestRate: '', annualFee: '', annualFeeMonth: '1', minPaymentPercentage: '3.0', insuranceRate: '0.25' });
+    }
+
+    async function handleSave() {
         if (!profileId) {
             toast.error("Error: Perfil no identificado");
             return;
@@ -74,25 +95,36 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, profi
         };
 
         try {
-            await createCreditCard({
+            const commonData = {
                 name: form.name,
                 limit: limit,
                 cutoffDay: parseInt(form.cutoffDay || '1') || 1,
                 paymentDay: parseInt(form.paymentDay || '1') || 1,
                 interestRate: safeParseFloat(form.interestRate),
                 annualFee: safeParseFloat(form.annualFee),
+                annualFeeMonth: parseInt(form.annualFeeMonth || '1'),
                 minPaymentPercentage: safeParseFloat(form.minPaymentPercentage, 3.0),
                 insuranceRate: safeParseFloat(form.insuranceRate, 0.0),
-                profileId
-            });
+            };
+
+            if (editingId) {
+                await updateCreditCardDetails(editingId, commonData);
+                toast.success("Tarjeta actualizada exitosamente");
+            } else {
+                await createCreditCard({
+                    ...commonData,
+                    initialBalance: 0,
+                    profileId
+                });
+                toast.success("Tarjeta creada exitosamente");
+            }
+
             onUpdate();
-            // Resetear formulario
-            setForm({ name: '', limit: '', cutoffDay: '', paymentDay: '', interestRate: '', annualFee: '', minPaymentPercentage: '3.0', insuranceRate: '0.25' });
-            toast.success("Tarjeta creada exitosamente");
+            resetForm();
         } catch (error) {
-            console.error("Error creating card:", error);
+            console.error("Error saving card:", error);
             const msg = error instanceof Error ? error.message : "Error desconocido";
-            toast.error(`Error al crear la tarjeta: ${msg}`);
+            toast.error(`Error: ${msg}`);
         }
     }
 
@@ -101,6 +133,7 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, profi
             try {
                 await deleteCreditCard(id);
                 onUpdate();
+                if (editingId === id) resetForm();
                 toast.success("Tarjeta eliminada");
             } catch (error) {
                 toast.error("Error eliminando tarjeta");
@@ -189,9 +222,18 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, profi
             </div>
 
 
-            {/* Formulario de Creación de Tarjeta */}
-            <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 p-6 md:p-8 rounded-4xl shadow-sm dark:shadow-none">
-                <h3 className="text-xl md:text-2xl font-bold text-red-500 dark:text-red-400 mb-6 flex items-center gap-3"><span>💳</span> Nueva Tarjeta de Crédito</h3>
+            {/* Formulario de Creación/Edición de Tarjeta */}
+            <div className={`bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 p-6 md:p-8 rounded-4xl shadow-sm dark:shadow-none transition-all ${editingId ? 'ring-2 ring-blue-500/20 bg-blue-50/50' : ''}`}>
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl md:text-2xl font-bold text-red-500 dark:text-red-400 flex items-center gap-3">
+                        <span>{editingId ? '✏️' : '💳'}</span>
+                        {editingId ? 'Editar Tarjeta' : 'Nueva Tarjeta de Crédito'}
+                    </h3>
+                    {editingId && (
+                        <button onClick={resetForm} className="text-sm font-bold text-zinc-400 hover:text-zinc-600">Cancelar Edición</button>
+                    )}
+                </div>
+
                 <div className="flex flex-col md:flex-row gap-6 items-end">
                     <div className="flex-1 w-full"><label className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Nombre Tarjeta</label><input className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 rounded-2xl px-5 py-4 mt-2 focus:ring-2 focus:ring-red-500/50 outline-none text-lg text-zinc-900 dark:text-white" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: Visa Infinite" /></div>
                     <div className="w-full md:w-32"><label className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Límite</label><input type="number" className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 rounded-2xl px-5 py-4 mt-2 focus:ring-2 focus:ring-red-500/50 outline-none text-lg text-zinc-900 dark:text-white" value={form.limit} onChange={e => setForm({ ...form, limit: e.target.value })} placeholder="0.00" /></div>
@@ -202,9 +244,10 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, profi
                     <div className="w-full md:w-32"><label className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Tasa % Anual</label><input type="number" className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 rounded-2xl px-5 py-4 mt-2 focus:ring-2 focus:ring-red-500/50 outline-none text-lg text-zinc-900 dark:text-white" value={form.interestRate} onChange={e => setForm({ ...form, interestRate: e.target.value })} placeholder="0.0" /></div>
                     <div className="w-full md:w-32"><label className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Anualidad</label><input type="number" className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 rounded-2xl px-5 py-4 mt-2 focus:ring-2 focus:ring-red-500/50 outline-none text-lg text-zinc-900 dark:text-white" value={form.annualFee} onChange={e => setForm({ ...form, annualFee: e.target.value })} placeholder="$0.00" /></div>
                     <div className="w-full md:w-32"><label className="text-zinc-500 uppercase tracking-wider text-xs">Pago Mín %</label><input type="number" className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 rounded-2xl px-5 py-4 mt-2 focus:ring-2 focus:ring-red-500/50 outline-none text-lg text-zinc-900 dark:text-white" value={form.minPaymentPercentage} onChange={e => setForm({ ...form, minPaymentPercentage: e.target.value })} placeholder="3.0" /></div>
-                    <div className="w-full md:w-32"><label className="text-zinc-500 uppercase tracking-wider text-xs">Seguro % Mes</label><input type="number" className="w-full bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 rounded-2xl px-5 py-4 mt-2 focus:ring-2 focus:ring-red-500/50 outline-none text-lg text-zinc-900 dark:text-white" value={form.insuranceRate} onChange={e => setForm({ ...form, insuranceRate: e.target.value })} placeholder="0.25" /></div>
 
-                    <button onClick={handleCreate} className="w-full md:w-auto ml-auto px-8 py-4 bg-red-500 hover:bg-red-400 text-white dark:text-zinc-900 font-black text-lg rounded-2xl transition-all shadow-lg hover:shadow-red-500/20">Agregar</button>
+                    <button onClick={handleSave} className={`w-full md:w-auto ml-auto px-8 py-4 ${editingId ? 'bg-blue-600 hover:bg-blue-500' : 'bg-red-500 hover:bg-red-400'} text-white font-black text-lg rounded-2xl transition-all shadow-lg`}>
+                        {editingId ? 'Guardar Cambios' : 'Agregar Tarjeta'}
+                    </button>
                 </div>
             </div>
 
@@ -217,12 +260,13 @@ export default function CreditCardsTab({ creditCards, accounts, profileId, profi
                         onPay={(c) => startPayment(c)}
                         onDelete={(id) => handleDelete(id)}
                         onAddCharge={(c) => handleAddCharge(c, 50)}
+                        onEdit={() => startEdit(card)}
                     />
                 ))}
 
                 {/* Empty State */}
                 {finalSortedCards.length === 0 && (
-                    <div className="col-span-1 md:col-span-2 text-center py-20 text-zinc-600 bg-zinc-100 dark:bg-zinc-900/20 rounded-[2rem] border border-dashed border-zinc-200 dark:border-zinc-800">
+                    <div className="col-span-1 md:col-span-2 text-center py-20 text-zinc-600 bg-zinc-100 dark:bg-zinc-900/20 rounded-4xl border border-dashed border-zinc-200 dark:border-zinc-800">
                         <p className="text-4xl mb-4">💳</p>
                         <p className="text-xl font-bold text-zinc-900 dark:text-white">Sin tarjetas registradas</p>
                         <p className="text-sm mt-2 text-zinc-500">Agrega tus tarjetas para visualizar deudas y fechas de corte.</p>

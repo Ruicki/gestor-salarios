@@ -240,3 +240,14 @@ model Transfer {
   destinationAccountId Int
   destinationAccount   Account @relation("DestinationAccount", fields: [destinationAccountId], references: [id])
 }
+
+// Phase 7: Audit Logs
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  action    String   // "CREATE_PROFILE", "DELETE_PROFILE", "IMPERSONATE", "RESET_DATA"
+  details   String?  // Detalles adicionales
+  actorId   Int?     // Quién hizo la acción
+  targetId  Int?     // A quién se le hizo
+  
+  createdAt DateTime @default(now())
+}

@@ -160,7 +160,7 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
                         </div>
                         <span>{goal.type === 'FIXED' ? 'Fijo' : 'Flexible'}</span>
                         {goal.type === 'FIXED' && <span className="text-zinc-300">•</span>}
-                        {goal.type === 'FIXED' && <span>{goal.frequency}</span>}
+                        {goal.type === 'FIXED' && <span>{goal.frequency === 'WEEKLY' ? 'Semanal' : goal.frequency === 'BIWEEKLY' ? 'Quincenal' : 'Mensual'}</span>}
                         {goal.type === 'FIXED' && goal.sourceAccountId && (
                             <>
                                 <span className="text-zinc-300">•</span>
@@ -181,21 +181,15 @@ export default function GoalsTab({ goals, accounts, profileId, onUpdate }: Goals
 
 
                 {/* MONTO PRINCIPAL - LÓGICA DE ALCANCÍA */}
-                <div className="flex items-end gap-3 mb-6 cursor-pointer group/piggy" onClick={() => setIsRevealed(!isRevealed)}>
-                    <div className={`p-3 rounded-2xl transition-all duration-500 ${isRevealed ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-pink-100 text-pink-500 dark:bg-pink-500/20 dark:text-pink-400 rotate-0 group-hover/piggy:rotate-12'}`}>
+                <div className="flex items-end gap-3 mb-6 cursor-pointer group/piggy">
+                    <div className="p-3 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 rotate-0 group-hover/piggy:rotate-12 transition-all duration-500">
                         <PiggyBank size={32} />
                     </div>
                     <div>
                         <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Ahorrado</p>
-                        {isRevealed ? (
-                            <span className="text-3xl font-black text-zinc-900 dark:text-white animate-in fade-in zoom-in duration-300">
-                                ${goal.currentAmount.toFixed(2)}
-                            </span>
-                        ) : (
-                            <span className="text-3xl font-black text-zinc-200 dark:text-zinc-700 select-none">
-                                $••••
-                            </span>
-                        )}
+                        <span className="text-3xl font-black text-zinc-900 dark:text-white">
+                            ${goal.currentAmount.toFixed(2)}
+                        </span>
                     </div>
                 </div>
 

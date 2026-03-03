@@ -107,3 +107,46 @@ export async function deleteSalaryById(id: number): Promise<void> {
         }
     });
 }
+
+export async function updateSalary(id: number, data: CreateSalaryInput) {
+    const oldSalary = await prisma.salary.findUnique({ where: { id } });
+    if (!oldSalary) throw new Error("Salario no encontrado");
+
+    await prisma.$transaction(async (tx) => {
+        // 1. Revert Old Impact
+        if (oldSalary.accountId) {
+            await tx.account.update({
+                where: { id: oldSalary.accountId },
+                data: { balance: { decrement: oldSalary.netVal } }
+            });
+        }
+
+        // 2. Apply New Impact
+        if (data.accountId) {
+            await tx.account.update({
+                where: { id: data.accountId },
+                data: { balance: { increment: data.netVal } }
+            });
+        }
+
+        // 3. Update Record
+        await tx.salary.update({
+            where: { id },
+            data: {
+                grossVal: data.grossVal,
+                bonus: data.bonus,
+                taxes: data.taxes,
+                netVal: data.netVal,
+                socialSec: data.socialSec,
+                eduIns: data.eduIns,
+                incomeTax: data.incomeTax,
+                company: data.company || "Sin Empresa",
+                absentDays: data.absentDays,
+                profileId: data.profileId,
+                accountId: data.accountId
+            }
+        });
+    });
+}
+
+

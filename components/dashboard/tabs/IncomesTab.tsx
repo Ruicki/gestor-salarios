@@ -23,6 +23,7 @@ interface IncomesTabProps {
 
 export default function IncomesTab({ incomes, salaries, accounts, profileId, customDeductions, onUpdate }: IncomesTabProps) {
     const [showIncomeWizard, setShowIncomeWizard] = useState(false);
+    const [incomeToEdit, setIncomeToEdit] = useState<any | null>(null);
 
     const latestSalary = salaries && salaries.length > 0 ? salaries[0] : null;
 
@@ -47,7 +48,10 @@ export default function IncomesTab({ incomes, salaries, accounts, profileId, cus
                     <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
 
                     <div className="relative z-10 flex flex-col items-center">
-                        <div className="w-20 h-20 bg-white/10 dark:bg-black/5 rounded-full flex items-center justify-center mb-6 backdrop-blur-sm">
+                        <div
+                            onClick={() => { setIncomeToEdit(null); setShowIncomeWizard(true); }}
+                            className="w-20 h-20 bg-white/10 dark:bg-black/5 rounded-full flex items-center justify-center mb-6 backdrop-blur-sm cursor-pointer hover:scale-110 transition-transform"
+                        >
                             <Plus className="w-8 h-8 text-white dark:text-black" />
                         </div>
                         <h3 className="text-3xl font-black mb-2 tracking-tight">Nuevo Ingreso</h3>
@@ -57,7 +61,7 @@ export default function IncomesTab({ incomes, salaries, accounts, profileId, cus
                     </div>
 
                     <button
-                        onClick={() => setShowIncomeWizard(true)}
+                        onClick={() => { setIncomeToEdit(null); setShowIncomeWizard(true); }}
                         className="relative z-10 bg-white dark:bg-black text-black dark:text-white px-10 py-4 rounded-2xl font-bold text-lg transition-transform hover:scale-105 active:scale-95 shadow-lg"
                     >
                         Registrar Ahora
@@ -79,21 +83,47 @@ export default function IncomesTab({ incomes, salaries, accounts, profileId, cus
                         <IncomeWizard
                             accounts={accounts}
                             profileId={profileId}
-                            onClose={() => setShowIncomeWizard(false)}
+                            initialData={incomeToEdit}
+                            isEditing={!!incomeToEdit}
+                            onClose={() => { setShowIncomeWizard(false); setIncomeToEdit(null); }}
                             onSuccess={() => {
                                 setShowIncomeWizard(false);
+                                setIncomeToEdit(null);
                                 onUpdate();
                             }}
                         />
                     )}
 
-                    <div className="space-y-4">
-                        <IncomeHistory
-                            salaries={salaries}
-                            incomes={incomes}
-                            onDataChange={onUpdate}
-                        />
-                    </div>
+                    {/* Empty State Check */}
+                    {(salaries.length === 0 && incomes.length === 0) ? (
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                            <div className="bg-zinc-100 dark:bg-zinc-800/50 p-6 rounded-full mb-4">
+                                <span className="text-4xl grayscale opacity-50">💰</span>
+                            </div>
+                            <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Sin ingresos registrados</h3>
+                            <p className="text-zinc-500 dark:text-zinc-400 max-w-xs mb-6 text-sm">
+                                Comienza registrando tu salario o ingresos extra para calcular tu presupuesto.
+                            </p>
+                            <button
+                                onClick={() => { setIncomeToEdit(null); setShowIncomeWizard(true); }}
+                                className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-black font-bold rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all text-sm"
+                            >
+                                Añadir Ingreso
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <IncomeHistory
+                                salaries={salaries}
+                                incomes={incomes}
+                                onDataChange={onUpdate}
+                                onEdit={(item) => {
+                                    setIncomeToEdit(item);
+                                    setShowIncomeWizard(true);
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

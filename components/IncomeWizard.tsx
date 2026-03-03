@@ -15,6 +15,8 @@ interface IncomeWizardProps {
     profileId: number;
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: any;
+    isEditing?: boolean;
 }
 
 type IncomeType = 'SALARY' | 'DEPOSIT' | 'CASH' | null;
